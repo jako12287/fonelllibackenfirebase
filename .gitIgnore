@@ -1,0 +1,23 @@
+# Dependencias de Node.js
+node_modules/
+
+
+# Archivos de entorno
+.env
+
+# Carpetas y archivos específicos de la IDE o editor
+.idea/
+.vscode/
+config/
+
+# Archivos generados por la compilación o distribución
+/dist/
+build/
+
+# Archivos temporales
+*.log
+*.tmp
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
