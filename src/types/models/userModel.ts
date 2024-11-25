@@ -1,12 +1,12 @@
 export interface user {
   Email: string;
   Password: string;
-  Orders: any[];
+  Orders?: any[];
   Type: userType;
   Verify: boolean;
 }
 
-enum userType {
+export enum userType {
   CUSTOMER = "CUSTOMER",
   COLLABORATOR = "COLLABORATOR",
   ADMIN = "ADMIN",
