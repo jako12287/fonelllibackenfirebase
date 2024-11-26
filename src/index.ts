@@ -10,7 +10,7 @@ const admin = require("firebase-admin");
 
 const app = express();
 
-const serviceAccount = require("../config/fonelli-firebase-adminsdk-ns2yg-55006cb732.json");
+const serviceAccount = require("../config/fonelli-firebase-adminsdk-ns2yg-a98e4d4a16.json");
 const PORT = process.env.PORT;
 
 admin.initializeApp({
