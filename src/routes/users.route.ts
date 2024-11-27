@@ -6,6 +6,7 @@ import {
   changeDataUser,
   deleteUser,
   registerMassiveUsers,
+  getUserById
 } from "../controller/registerUsers.controlller";
 import multer from "multer";
 
@@ -16,6 +17,7 @@ const upload = multer({
 const router = Router();
 
 router.get("/getAllUser", getAllUsers);
+router.get("/getUserById/:_id", getUserById);
 router.post("/register", resgisterUser);
 router.post("/registerMasseve", upload.single("file"), registerMassiveUsers);
 router.put("/changePassword", changepassword);

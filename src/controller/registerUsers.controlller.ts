@@ -174,6 +174,38 @@ export const getAllUsers = async (req: Request, res: Response) => {
   }
 };
 
+//Get User By Id
+
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const { _id } = req.params; // Obtén el _id desde el body de la solicitud
+
+    if (!_id) {
+      return res.status(400).json({ message: "El _id es requerido." });
+    }
+
+    const db = admin.database();
+    const ref = db.ref("users").child(_id); // Obtén la referencia del usuario con ese _id
+
+    const snapshot = await ref.once("value");
+
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "Usuario no encontrado." });
+    }
+
+    const user = snapshot.val();
+
+    return res.status(200).json({
+      id: snapshot.key,
+      ...user,
+      orders: user.orders || [],
+    });
+  } catch (error) {
+    console.error("Error al obtener el usuario:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
 //Chage data user
 
 export const changeDataUser = async (req: Request, res: Response) => {
