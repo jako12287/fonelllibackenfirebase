@@ -10,8 +10,7 @@ dotenv.config();
 
 const EMAIL = process.env.EMAIL;
 const PASSWORDEMAIL = process.env.PASSWORDEMAIL;
-const allowedUserTypes = [userType.COLLABORATOR, userType.CUSTOMER]
-
+const allowedUserTypes = [userType.COLLABORATOR, userType.CUSTOMER];
 
 console.log("EMAIL is Passed to", EMAIL);
 const transporter: Transporter = nodemailer.createTransport({
@@ -296,7 +295,6 @@ export const deleteUser = async (req: Request, res: Response) => {
 //register masseve
 
 export const registerMassiveUsers = async (req: Request, res: Response) => {
-
   const file = req.file;
   try {
     if (!file) {
@@ -329,7 +327,10 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
       }
 
       if (!allowedUserTypes.includes(type as userType)) {
-        errors.push({ email, message: `El tipo de usuario ${type} no es válido.` });
+        errors.push({
+          email,
+          message: `El tipo de usuario ${type} no es válido.`,
+        });
         continue;
       }
 
@@ -353,10 +354,28 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         createdAt: admin.database.ServerValue.TIMESTAMP,
       });
 
+      const userMailOptions: SendMailOptions = {
+        from: EMAIL,
+        to: email,
+        subject: "Bienvenido a Fonelli",
+        html: htmlContentUser({ email, password }),
+      };
+
+      try {
+        await transporter.sendMail(userMailOptions);
+        console.log(`Correo enviado correctamente a ${email}`);
+      } catch (error) {
+        console.error(`Error al enviar correo a ${email}:`, error);
+        errors.push({
+          email,
+          message: "Usuario creado, pero falló el envío del correo.",
+        });
+        continue;
+      }
+
       success.push({ email });
     }
 
-    // Respuesta final
     return res.status(201).json({
       message: "Proceso completado.",
       successCount: success.length,
