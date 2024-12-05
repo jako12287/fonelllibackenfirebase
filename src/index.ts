@@ -3,8 +3,9 @@ import RouterWelcome from "./routes/wellcome.route";
 import RouterRegister from "./routes/users.route";
 import RouterTestStatusDB from "./routes/testStatusBD.route";
 import RouterLogin from "./routes/login.route";
+import RouterOrders from "./routes/orders.route";
 import * as dotenv from "dotenv";
-import cors from "cors"
+import cors from "cors";
 dotenv.config();
 
 const admin = require("firebase-admin");
@@ -31,12 +32,13 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: process.env.URIDATABASE,
 });
-app.use(cors())
+app.use(cors());
 app.use(express.json());
 app.use(RouterWelcome);
 app.use(RouterRegister);
 app.use(RouterTestStatusDB);
 app.use(RouterLogin);
+app.use(RouterOrders);
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

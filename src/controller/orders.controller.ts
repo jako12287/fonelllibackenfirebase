@@ -1,0 +1,264 @@
+import { Request, Response } from "express";
+import * as admin from "firebase-admin";
+
+// Crear una nueva orden
+export const createOrder = async (req: Request, res: Response) => {
+  const {
+    userId,
+    model,
+    caratage,
+    color,
+    rock,
+    observations,
+    size,
+    long,
+    initialName,
+    name,
+    totalPieces,
+  } = req.body;
+
+  // Validar campos obligatorios
+  if (!userId || !model || !caratage || !color || !rock) {
+    return res.status(400).json({
+      message:
+        "Los campos obligatorios (userId, model, caratage, color, rock) son requeridos.",
+    });
+  }
+
+  try {
+    const db = admin.database();
+    const ordersRef = db.ref("orders");
+
+    // Crear una nueva referencia para la orden
+    const newOrderRef = ordersRef.push();
+
+    // Normalizar los campos opcionales
+    const normalizeField = (field: any): any[] | null =>
+      Array.isArray(field) ? field : null;
+
+    // Datos de la nueva orden
+    const newOrder = {
+      userId,
+      model,
+      caratage,
+      color,
+      rock,
+      observations: observations || "",
+      size: normalizeField(size),
+      long: normalizeField(long),
+      initialName: normalizeField(initialName),
+      name: normalizeField(name),
+      totalPieces: totalPieces || null,
+      createdAt: admin.database.ServerValue.TIMESTAMP,
+      status:"CREATED"
+    };
+
+    // Guardar la orden en la base de datos
+    await newOrderRef.set(newOrder);
+
+    // Devolver respuesta exitosa
+    return res.status(201).json({
+      message: "Orden creada exitosamente.",
+      orderId: newOrderRef.key,
+      order: newOrder,
+    });
+  } catch (error) {
+    console.error("Error al crear la orden:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+
+// Obtener todas las órdenes
+export const getAllOrders = async (req: Request, res: Response) => {
+  try {
+    const db = admin.database();
+    const ordersRef = db.ref("orders");
+
+    // Obtener todas las órdenes de la base de datos
+    const snapshot = await ordersRef.once("value");
+
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "No se encontraron órdenes." });
+    }
+
+    // Convertir los datos de Firebase en un array
+    const orders: Array<{ id: string; [key: string]: any }> = [];
+    snapshot.forEach((childSnapshot) => {
+      orders.push({
+        id: childSnapshot.key, // Incluye el ID único de la orden
+        ...childSnapshot.val(),
+      });
+    });
+
+    // Devolver las órdenes en la respuesta
+    return res.status(200).json({ message: "Órdenes obtenidas con éxito.", orders });
+  } catch (error) {
+    console.error("Error al obtener las órdenes:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+// Obtener órdenes por ID de usuario
+export const getOrdersByUserId = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  // Validar que se envíe el userId
+  if (!userId) {
+    return res.status(400).json({ message: "El userId es obligatorio." });
+  }
+
+  try {
+    const db = admin.database();
+    const ordersRef = db.ref("orders");
+
+    // Filtrar órdenes por userId
+    const snapshot = await ordersRef.orderByChild("userId").equalTo(userId).once("value");
+
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "No se encontraron órdenes para este usuario." });
+    }
+
+    // Convertir los datos de Firebase en un array
+    const orders: Array<{ id: string; [key: string]: any }> = [];
+    snapshot.forEach((childSnapshot) => {
+      orders.push({
+        id: childSnapshot.key, // Incluye el ID único de la orden
+        ...childSnapshot.val(),
+      });
+    });
+
+    // Devolver las órdenes del usuario en la respuesta
+    return res.status(200).json({ message: "Órdenes obtenidas con éxito.", orders });
+  } catch (error) {
+    console.error("Error al obtener las órdenes por userId:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+
+// Eliminar una orden por ID
+export const deleteOrder = async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+
+  // Validar que se envíe el orderId
+  if (!orderId) {
+    return res.status(400).json({ message: "El orderId es obligatorio." });
+  }
+
+  try {
+    const db = admin.database();
+    const orderRef = db.ref(`orders/${orderId}`);
+
+    // Verificar si la orden existe
+    const snapshot = await orderRef.once("value");
+
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "La orden no existe." });
+    }
+
+    // Eliminar la orden
+    await orderRef.remove();
+
+    // Respuesta exitosa
+    return res.status(200).json({ message: "Orden eliminada exitosamente." });
+  } catch (error) {
+    console.error("Error al eliminar la orden:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+
+
+// Editar una orden por ID
+export const updateOrder = async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+  const updatedData = req.body;
+
+  // Validar que se envíe el orderId
+  if (!orderId) {
+    return res.status(400).json({ message: "El orderId es obligatorio." });
+  }
+
+  // Validar que se envíen datos para actualizar
+  if (!updatedData || Object.keys(updatedData).length === 0) {
+    return res.status(400).json({ message: "No se enviaron datos para actualizar." });
+  }
+
+  try {
+    const db = admin.database();
+    const orderRef = db.ref(`orders/${orderId}`);
+
+    // Verificar si la orden existe
+    const snapshot = await orderRef.once("value");
+
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "La orden no existe." });
+    }
+
+    // Actualizar la orden con los datos proporcionados
+    await orderRef.update(updatedData);
+
+    // Obtener los datos actualizados para devolver en la respuesta
+    const updatedOrder = (await orderRef.once("value")).val();
+
+    // Respuesta exitosa
+    return res.status(200).json({
+      message: "Orden actualizada exitosamente.",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Error al actualizar la orden:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+
+// Editar el status de una orden por ID
+export const updateOrderStatus = async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+  const { status } = req.body;
+
+  // Validar que se envíe el orderId y el status
+  if (!orderId) {
+    return res.status(400).json({ message: "El orderId es obligatorio." });
+  }
+  if (!status) {
+    return res.status(400).json({ message: "El campo status es obligatorio." });
+  }
+
+  // Validar que el status sea un valor válido (puedes personalizar esto según los valores que pueda tomar el status)
+  const validStatuses = ["Pendiente", "En proceso", "Completada", "Cancelada"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      message: `El valor del status debe ser uno de los siguientes: ${validStatuses.join(", ")}`,
+    });
+  }
+
+  try {
+    const db = admin.database();
+    const orderRef = db.ref(`orders/${orderId}`);
+
+    // Verificar si la orden existe
+    const snapshot = await orderRef.once("value");
+
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "La orden no existe." });
+    }
+
+    // Actualizar el status de la orden
+    await orderRef.update({ status });
+
+    // Obtener la orden actualizada
+    const updatedOrder = (await orderRef.once("value")).val();
+
+    // Respuesta exitosa
+    return res.status(200).json({
+      message: "Status de la orden actualizado exitosamente.",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Error al actualizar el status de la orden:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
