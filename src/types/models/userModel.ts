@@ -11,3 +11,8 @@ export enum userType {
   COLLABORATOR = "COLLABORATOR",
   ADMIN = "ADMIN",
 }
+
+export enum stateType {
+  PENDING = "PENDING",
+  CAUGHT = "CAUGHT",
+}

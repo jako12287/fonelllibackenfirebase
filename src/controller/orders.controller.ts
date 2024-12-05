@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
+import { stateType } from "../types/models/userModel";
 
 // Crear una nueva orden
 export const createOrder = async (req: Request, res: Response) => {
@@ -50,7 +51,7 @@ export const createOrder = async (req: Request, res: Response) => {
       name: normalizeField(name),
       totalPieces: totalPieces || null,
       createdAt: admin.database.ServerValue.TIMESTAMP,
-      status:"CREATED"
+      status:stateType.PENDING
     };
 
     // Guardar la orden en la base de datos
@@ -259,6 +260,36 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error al actualizar el status de la orden:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+
+// Obtener una orden por ID
+export const getOrderById = async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+
+  // Validar que se envíe el orderId
+  if (!orderId) {
+    return res.status(400).json({ message: "El orderId es obligatorio." });
+  }
+
+  try {
+    const db = admin.database();
+    const orderRef = db.ref(`orders/${orderId}`);
+
+    // Obtener los datos de la orden
+    const snapshot = await orderRef.once("value");
+
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "La orden no existe." });
+    }
+
+    // Devolver la orden encontrada
+    const order = snapshot.val();
+    return res.status(200).json({ message: "Orden obtenida con éxito.", order });
+  } catch (error) {
+    console.error("Error al obtener la orden por ID:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
