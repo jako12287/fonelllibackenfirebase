@@ -8,6 +8,7 @@ import {
   updateOrder,
   updateOrderStatus,
   updateOrderStatusAdmin,
+  addFolioToOrder,
 } from "../controller/orders.controller";
 
 const router = Router();
@@ -17,7 +18,7 @@ router.delete("/orders/:orderId", deleteOrder);
 router.put("/orders/:orderId", updateOrder);
 router.put("/orders/status/:orderId", updateOrderStatus);
 router.put("/orders/status-admin/:orderId", updateOrderStatusAdmin);
-
+router.put("/orders/add-folio/:orderId", addFolioToOrder);
 router.get("/get_orders", getAllOrders);
 router.get("/orders/user/:userId", getOrdersByUserId);
 router.get("/orders/:orderId", getOrderById);

@@ -344,3 +344,43 @@ export const getOrderById = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
+
+export const addFolioToOrder = async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+  const { folio } = req.body;
+
+  // Validar que se envíe el orderId y el folio
+  if (!orderId) {
+    return res.status(400).json({ message: "El orderId es obligatorio." });
+  }
+  if (!folio) {
+    return res.status(400).json({ message: "El campo folio es obligatorio." });
+  }
+
+  try {
+    const db = admin.database();
+    const orderRef = db.ref(`orders/${orderId}`);
+
+    // Verificar si la orden existe
+    const snapshot = await orderRef.once("value");
+    if (!snapshot.exists()) {
+      return res.status(404).json({ message: "La orden no existe." });
+    }
+
+    // Actualizar el campo folio de la orden
+    await orderRef.update({ folio });
+
+    // Obtener la orden actualizada
+    const updatedOrder = (await orderRef.once("value")).val();
+
+    // Respuesta exitosa
+    return res.status(200).json({
+      message: "Folio agregado exitosamente a la orden.",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Error al adicionar el folio a la orden:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
