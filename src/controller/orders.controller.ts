@@ -51,8 +51,8 @@ export const createOrder = async (req: Request, res: Response) => {
       name: normalizeField(name),
       totalPieces: totalPieces || null,
       createdAt: admin.database.ServerValue.TIMESTAMP,
-      status:stateType.PENDING,
-      statusAdmin:stateType.PENDING
+      status: stateType.PENDING,
+      statusAdmin: stateType.PENDING,
     };
 
     // Guardar la orden en la base de datos
@@ -69,7 +69,6 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
 
 // Obtener todas las órdenes
 export const getAllOrders = async (req: Request, res: Response) => {
@@ -94,7 +93,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
     });
 
     // Devolver las órdenes en la respuesta
-    return res.status(200).json({ message: "Órdenes obtenidas con éxito.", orders });
+    return res
+      .status(200)
+      .json({ message: "Órdenes obtenidas con éxito.", orders });
   } catch (error) {
     console.error("Error al obtener las órdenes:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
@@ -115,10 +116,15 @@ export const getOrdersByUserId = async (req: Request, res: Response) => {
     const ordersRef = db.ref("orders");
 
     // Filtrar órdenes por userId
-    const snapshot = await ordersRef.orderByChild("userId").equalTo(userId).once("value");
+    const snapshot = await ordersRef
+      .orderByChild("userId")
+      .equalTo(userId)
+      .once("value");
 
     if (!snapshot.exists()) {
-      return res.status(404).json({ message: "No se encontraron órdenes para este usuario." });
+      return res
+        .status(404)
+        .json({ message: "No se encontraron órdenes para este usuario." });
     }
 
     // Convertir los datos de Firebase en un array
@@ -131,13 +137,14 @@ export const getOrdersByUserId = async (req: Request, res: Response) => {
     });
 
     // Devolver las órdenes del usuario en la respuesta
-    return res.status(200).json({ message: "Órdenes obtenidas con éxito.", orders });
+    return res
+      .status(200)
+      .json({ message: "Órdenes obtenidas con éxito.", orders });
   } catch (error) {
     console.error("Error al obtener las órdenes por userId:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
 
 // Eliminar una orden por ID
 export const deleteOrder = async (req: Request, res: Response) => {
@@ -170,8 +177,6 @@ export const deleteOrder = async (req: Request, res: Response) => {
   }
 };
 
-
-
 // Editar una orden por ID
 export const updateOrder = async (req: Request, res: Response) => {
   const { orderId } = req.params;
@@ -184,7 +189,9 @@ export const updateOrder = async (req: Request, res: Response) => {
 
   // Validar que se envíen datos para actualizar
   if (!updatedData || Object.keys(updatedData).length === 0) {
-    return res.status(400).json({ message: "No se enviaron datos para actualizar." });
+    return res
+      .status(400)
+      .json({ message: "No se enviaron datos para actualizar." });
   }
 
   try {
@@ -215,7 +222,6 @@ export const updateOrder = async (req: Request, res: Response) => {
   }
 };
 
-
 // Editar el status de una orden por ID
 export const updateOrderStatus = async (req: Request, res: Response) => {
   const { orderId } = req.params;
@@ -233,7 +239,9 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   const validStatuses = ["Pendiente", "En proceso", "Completada", "Cancelada"];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
-      message: `El valor del status debe ser uno de los siguientes: ${validStatuses.join(", ")}`,
+      message: `El valor del status debe ser uno de los siguientes: ${validStatuses.join(
+        ", "
+      )}`,
     });
   }
 
@@ -265,7 +273,6 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   }
 };
 
-
 export const updateOrderStatusAdmin = async (req: Request, res: Response) => {
   const { orderId } = req.params;
   const { statusAdmin } = req.body;
@@ -275,14 +282,18 @@ export const updateOrderStatusAdmin = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "El orderId es obligatorio." });
   }
   if (!statusAdmin) {
-    return res.status(400).json({ message: "El campo statusAdmin es obligatorio." });
+    return res
+      .status(400)
+      .json({ message: "El campo statusAdmin es obligatorio." });
   }
 
   // Validar que el statusAdmin sea un valor válido (personalizar según tu lógica)
   const validAdminStatuses = ["PENDING", "CAUGHT", "DOWNLOAD"];
   if (!validAdminStatuses.includes(statusAdmin)) {
     return res.status(400).json({
-      message: `El valor del statusAdmin debe ser uno de los siguientes: ${validAdminStatuses.join(", ")}`,
+      message: `El valor del statusAdmin debe ser uno de los siguientes: ${validAdminStatuses.join(
+        ", "
+      )}`,
     });
   }
 
@@ -299,6 +310,9 @@ export const updateOrderStatusAdmin = async (req: Request, res: Response) => {
 
     // Actualizar el statusAdmin de la orden
     await orderRef.update({ statusAdmin });
+    if (statusAdmin === "CAUGHT") {
+      await orderRef.update({ status: "CAUGHT" });
+    }
 
     // Obtener la orden actualizada
     const updatedOrder = (await orderRef.once("value")).val();
@@ -313,8 +327,6 @@ export const updateOrderStatusAdmin = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
-
 
 // Obtener una orden por ID
 export const getOrderById = async (req: Request, res: Response) => {
@@ -338,13 +350,14 @@ export const getOrderById = async (req: Request, res: Response) => {
 
     // Devolver la orden encontrada
     const order = snapshot.val();
-    return res.status(200).json({ message: "Orden obtenida con éxito.", order });
+    return res
+      .status(200)
+      .json({ message: "Orden obtenida con éxito.", order });
   } catch (error) {
     console.error("Error al obtener la orden por ID:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
 
 export const addFolioToOrder = async (req: Request, res: Response) => {
   const { orderId } = req.params;
