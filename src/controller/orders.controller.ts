@@ -19,10 +19,10 @@ export const createOrder = async (req: Request, res: Response) => {
   } = req.body;
 
   // Validar campos obligatorios
-  if (!userId || !model || !caratage || !color || !rock) {
+  if (!userId || !model || !caratage || !color) {
     return res.status(400).json({
       message:
-        "Los campos obligatorios (userId, model, caratage, color, rock) son requeridos.",
+        "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
     });
   }
 
@@ -37,13 +37,12 @@ export const createOrder = async (req: Request, res: Response) => {
     const normalizeField = (field: any): any[] | null =>
       Array.isArray(field) ? field : null;
 
-    // Datos de la nueva orden
-    const newOrder = {
+    // Construir el objeto de la nueva orden dinámicamente
+    const newOrder: Record<string, any> = {
       userId,
       model,
       caratage,
       color,
-      rock,
       observations: observations || "",
       size: normalizeField(size),
       long: normalizeField(long),
@@ -54,6 +53,11 @@ export const createOrder = async (req: Request, res: Response) => {
       status: stateType.PENDING,
       statusAdmin: stateType.PENDING,
     };
+
+    // Si `rock` viene en la solicitud, se agrega al objeto
+    if (Array.isArray(rock)) {
+      newOrder.rock = rock;
+    }
 
     // Guardar la orden en la base de datos
     await newOrderRef.set(newOrder);
@@ -69,6 +73,74 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
+// export const createOrder = async (req: Request, res: Response) => {
+//   const {
+//     userId,
+//     model,
+//     caratage,
+//     color,
+//     rock,
+//     observations,
+//     size,
+//     long,
+//     initialName,
+//     name,
+//     totalPieces,
+//   } = req.body;
+
+//   // Validar campos obligatorios
+//   if (!userId || !model || !caratage || !color) {
+//     return res.status(400).json({
+//       message:
+//         "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const ordersRef = db.ref("orders");
+
+//     // Crear una nueva referencia para la orden
+//     const newOrderRef = ordersRef.push();
+
+//     // Normalizar los campos opcionales
+//     const normalizeField = (field: any): any[] | null =>
+//       Array.isArray(field) ? field : null;
+
+//     // Datos de la nueva orden
+//     const newOrder = {
+//       userId,
+//       model,
+//       caratage,
+//       color,
+//       observations: observations || "",
+//       size: normalizeField(size),
+//       long: normalizeField(long),
+//       initialName: normalizeField(initialName),
+//       name: normalizeField(name),
+//       totalPieces: totalPieces || null,
+//       createdAt: admin.database.ServerValue.TIMESTAMP,
+//       status: stateType.PENDING,
+//       statusAdmin: stateType.PENDING,
+//     };
+//     if (Array.isArray(rock)) {
+//       newOrder.rock = rock;
+//     }
+//     // Guardar la orden en la base de datos
+//     await newOrderRef.set(newOrder);
+
+//     // Devolver respuesta exitosa
+//     return res.status(201).json({
+//       message: "Orden creada exitosamente.",
+//       orderId: newOrderRef.key,
+//       order: newOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al crear la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 
 // Obtener todas las órdenes
 export const getAllOrders = async (req: Request, res: Response) => {
