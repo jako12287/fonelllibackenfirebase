@@ -3,6 +3,8 @@ import * as admin from "firebase-admin";
 import { stateType } from "../types/models/userModel";
 
 // Crear una nueva orden
+
+
 export const createOrder = async (req: Request, res: Response) => {
   const {
     userId,
@@ -62,6 +64,32 @@ export const createOrder = async (req: Request, res: Response) => {
     // Guardar la orden en la base de datos
     await newOrderRef.set(newOrder);
 
+    // Enviar notificación push
+    const tokensRef = db.ref(`tokens/${userId}`);
+    const tokensSnapshot = await tokensRef.once("value");
+    const tokens: string[] = tokensSnapshot.val();
+
+    if (tokens && tokens.length > 0) {
+      for (const token of tokens) {
+        const message = {
+          notification: {
+            title: "Nueva Orden Creada",
+            body: `Tu orden para el modelo ${model} ha sido creada exitosamente.`,
+          },
+          token, // Token individual
+        };
+
+        try {
+          const response = await admin.messaging().send(message);
+          console.log(`Notificación enviada exitosamente al token ${token}:`, response);
+        } catch (error) {
+          console.error(`Error al enviar notificación al token ${token}:`, error);
+        }
+      }
+    } else {
+      console.log("No se encontraron tokens de dispositivo para el usuario.");
+    }
+
     // Devolver respuesta exitosa
     return res.status(201).json({
       message: "Orden creada exitosamente.",
@@ -73,6 +101,76 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+// export const createOrder = async (req: Request, res: Response) => {
+//   const {
+//     userId,
+//     model,
+//     caratage,
+//     color,
+//     rock,
+//     observations,
+//     size,
+//     long,
+//     initialName,
+//     name,
+//     totalPieces,
+//   } = req.body;
+
+//   // Validar campos obligatorios
+//   if (!userId || !model || !caratage || !color) {
+//     return res.status(400).json({
+//       message:
+//         "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const ordersRef = db.ref("orders");
+
+//     // Crear una nueva referencia para la orden
+//     const newOrderRef = ordersRef.push();
+
+//     // Normalizar los campos opcionales
+//     const normalizeField = (field: any): any[] | null =>
+//       Array.isArray(field) ? field : null;
+
+//     // Construir el objeto de la nueva orden dinámicamente
+//     const newOrder: Record<string, any> = {
+//       userId,
+//       model,
+//       caratage,
+//       color,
+//       observations: observations || "",
+//       size: normalizeField(size),
+//       long: normalizeField(long),
+//       initialName: normalizeField(initialName),
+//       name: normalizeField(name),
+//       totalPieces: totalPieces || null,
+//       createdAt: admin.database.ServerValue.TIMESTAMP,
+//       status: stateType.PENDING,
+//       statusAdmin: stateType.PENDING,
+//     };
+
+//     // Si `rock` viene en la solicitud, se agrega al objeto
+//     if (Array.isArray(rock)) {
+//       newOrder.rock = rock;
+//     }
+
+//     // Guardar la orden en la base de datos
+//     await newOrderRef.set(newOrder);
+
+//     // Devolver respuesta exitosa
+//     return res.status(201).json({
+//       message: "Orden creada exitosamente.",
+//       orderId: newOrderRef.key,
+//       order: newOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al crear la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 
 // export const createOrder = async (req: Request, res: Response) => {
 //   const {
@@ -466,6 +564,43 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error al adicionar el folio a la orden:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+
+// Guardar el token de notificación del usuario
+export const saveNotificationToken = async (req: Request, res: Response) => {
+  const { userId, token } = req.body;
+
+  // Validar los campos obligatorios
+  if (!userId || !token) {
+    return res.status(400).json({
+      message: "Los campos 'userId' y 'token' son requeridos.",
+    });
+  }
+
+  try {
+    const db = admin.database();
+    const tokensRef = db.ref(`tokens/${userId}`);
+
+    // Obtener los tokens existentes del usuario
+    const tokensSnapshot = await tokensRef.once("value");
+    let existingTokens: string[] = tokensSnapshot.val() || [];
+
+    // Si el token no está en la lista, agregarlo
+    if (!existingTokens.includes(token)) {
+      existingTokens.push(token);
+      await tokensRef.set(existingTokens); // Guardar los tokens actualizados
+    }
+
+    return res.status(200).json({
+      message: "Token de notificación guardado exitosamente.",
+      userId,
+      tokens: existingTokens,
+    });
+  } catch (error) {
+    console.error("Error al guardar el token de notificación:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
