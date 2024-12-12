@@ -3,8 +3,6 @@ import * as admin from "firebase-admin";
 import { stateType } from "../types/models/userModel";
 
 // Crear una nueva orden
-
-
 export const createOrder = async (req: Request, res: Response) => {
   const {
     userId,
@@ -64,12 +62,31 @@ export const createOrder = async (req: Request, res: Response) => {
     // Guardar la orden en la base de datos
     await newOrderRef.set(newOrder);
 
-    // Enviar notificación push
-    const tokensRef = db.ref(`tokens/${userId}`);
-    const tokensSnapshot = await tokensRef.once("value");
-    const tokens: string[] = tokensSnapshot.val();
+    // Verificar los usuarios de tipo ADMIN y COLLABORATOR y obtener sus tokens
+    const usersRef = db.ref("users");
+    const usersSnapshot = await usersRef.orderByChild("role").equalTo("ADMIN").once("value");
+    const collaboratorsSnapshot = await usersRef.orderByChild("role").equalTo("COLLABORATOR").once("value");
 
-    if (tokens && tokens.length > 0) {
+    const tokens: string[] = [];
+    
+    // Obtener tokens de los usuarios de tipo ADMIN
+    usersSnapshot.forEach((childSnapshot) => {
+      const notificationToken = childSnapshot.val().notificationToken;
+      if (notificationToken) {
+        tokens.push(notificationToken);
+      }
+    });
+
+    // Obtener tokens de los usuarios de tipo COLLABORATOR
+    collaboratorsSnapshot.forEach((childSnapshot) => {
+      const notificationToken = childSnapshot.val().notificationToken;
+      if (notificationToken) {
+        tokens.push(notificationToken);
+      }
+    });
+
+    // Enviar notificación push a los tokens obtenidos
+    if (tokens.length > 0) {
       for (const token of tokens) {
         const message = {
           notification: {
@@ -87,7 +104,7 @@ export const createOrder = async (req: Request, res: Response) => {
         }
       }
     } else {
-      console.log("No se encontraron tokens de dispositivo para el usuario.");
+      console.log("No se encontraron tokens de notificación para los usuarios.");
     }
 
     // Devolver respuesta exitosa
@@ -101,6 +118,104 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
+
+// export const createOrder = async (req: Request, res: Response) => {
+//   const {
+//     userId,
+//     model,
+//     caratage,
+//     color,
+//     rock,
+//     observations,
+//     size,
+//     long,
+//     initialName,
+//     name,
+//     totalPieces,
+//   } = req.body;
+
+//   // Validar campos obligatorios
+//   if (!userId || !model || !caratage || !color) {
+//     return res.status(400).json({
+//       message:
+//         "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const ordersRef = db.ref("orders");
+
+//     // Crear una nueva referencia para la orden
+//     const newOrderRef = ordersRef.push();
+
+//     // Normalizar los campos opcionales
+//     const normalizeField = (field: any): any[] | null =>
+//       Array.isArray(field) ? field : null;
+
+//     // Construir el objeto de la nueva orden dinámicamente
+//     const newOrder: Record<string, any> = {
+//       userId,
+//       model,
+//       caratage,
+//       color,
+//       observations: observations || "",
+//       size: normalizeField(size),
+//       long: normalizeField(long),
+//       initialName: normalizeField(initialName),
+//       name: normalizeField(name),
+//       totalPieces: totalPieces || null,
+//       createdAt: admin.database.ServerValue.TIMESTAMP,
+//       status: stateType.PENDING,
+//       statusAdmin: stateType.PENDING,
+//     };
+
+//     // Si `rock` viene en la solicitud, se agrega al objeto
+//     if (Array.isArray(rock)) {
+//       newOrder.rock = rock;
+//     }
+
+//     // Guardar la orden en la base de datos
+//     await newOrderRef.set(newOrder);
+
+//     // Enviar notificación push
+//     const tokensRef = db.ref(`tokens/${userId}`);
+//     const tokensSnapshot = await tokensRef.once("value");
+//     const tokens: string[] = tokensSnapshot.val();
+
+//     if (tokens && tokens.length > 0) {
+//       for (const token of tokens) {
+//         const message = {
+//           notification: {
+//             title: "Nueva Orden Creada",
+//             body: `Tu orden para el modelo ${model} ha sido creada exitosamente.`,
+//           },
+//           token, // Token individual
+//         };
+
+//         try {
+//           const response = await admin.messaging().send(message);
+//           console.log(`Notificación enviada exitosamente al token ${token}:`, response);
+//         } catch (error) {
+//           console.error(`Error al enviar notificación al token ${token}:`, error);
+//         }
+//       }
+//     } else {
+//       console.log("No se encontraron tokens de dispositivo para el usuario.");
+//     }
+
+//     // Devolver respuesta exitosa
+//     return res.status(201).json({
+//       message: "Orden creada exitosamente.",
+//       orderId: newOrderRef.key,
+//       order: newOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al crear la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 // export const createOrder = async (req: Request, res: Response) => {
 //   const {
 //     userId,
