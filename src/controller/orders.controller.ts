@@ -570,6 +570,41 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
 
 
 // Guardar el token de notificación del usuario
+// export const saveNotificationToken = async (req: Request, res: Response) => {
+//   const { userId, token } = req.body;
+
+//   // Validar los campos obligatorios
+//   if (!userId || !token) {
+//     return res.status(400).json({
+//       message: "Los campos 'userId' y 'token' son requeridos.",
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const tokensRef = db.ref(`tokens/${userId}`);
+
+//     // Obtener los tokens existentes del usuario
+//     const tokensSnapshot = await tokensRef.once("value");
+//     let existingTokens: string[] = tokensSnapshot.val() || [];
+
+//     // Si el token no está en la lista, agregarlo
+//     if (!existingTokens.includes(token)) {
+//       existingTokens.push(token);
+//       await tokensRef.set(existingTokens); // Guardar los tokens actualizados
+//     }
+
+//     return res.status(200).json({
+//       message: "Token de notificación guardado exitosamente.",
+//       userId,
+//       tokens: existingTokens,
+//     });
+//   } catch (error) {
+//     console.error("Error al guardar el token de notificación:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
+
 export const saveNotificationToken = async (req: Request, res: Response) => {
   const { userId, token } = req.body;
 
@@ -582,22 +617,21 @@ export const saveNotificationToken = async (req: Request, res: Response) => {
 
   try {
     const db = admin.database();
-    const tokensRef = db.ref(`tokens/${userId}`);
+    const userProfileRef = db.ref(`users/${userId}`);
 
-    // Obtener los tokens existentes del usuario
-    const tokensSnapshot = await tokensRef.once("value");
-    let existingTokens: string[] = tokensSnapshot.val() || [];
-
-    // Si el token no está en la lista, agregarlo
-    if (!existingTokens.includes(token)) {
-      existingTokens.push(token);
-      await tokensRef.set(existingTokens); // Guardar los tokens actualizados
+    // Obtener el perfil del usuario
+    const userProfileSnapshot = await userProfileRef.once("value");
+    if (!userProfileSnapshot.exists()) {
+      return res.status(404).json({ message: "El usuario no existe." });
     }
+
+    // Actualizar el token en el perfil del usuario
+    await userProfileRef.update({ notificationToken: token });
 
     return res.status(200).json({
       message: "Token de notificación guardado exitosamente.",
       userId,
-      tokens: existingTokens,
+      notificationToken: token,
     });
   } catch (error) {
     console.error("Error al guardar el token de notificación:", error);
