@@ -6,6 +6,7 @@ import { stateType } from "../types/models/userModel";
 export const createOrder = async (req: Request, res: Response) => {
   const {
     userId,
+    email,
     model,
     caratage,
     color,
@@ -19,7 +20,7 @@ export const createOrder = async (req: Request, res: Response) => {
   } = req.body;
 
   // Validar campos obligatorios
-  if (!userId || !model || !caratage || !color) {
+  if (!userId || !model || !caratage || !color || !email) {
     return res.status(400).json({
       message:
         "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
@@ -41,6 +42,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const newOrder: Record<string, any> = {
       userId,
       model,
+      email,
       caratage,
       color,
       observations: observations || "",
@@ -64,26 +66,29 @@ export const createOrder = async (req: Request, res: Response) => {
 
     // Verificar los usuarios de tipo ADMIN y COLLABORATOR y obtener sus tokens
     const usersRef = db.ref("users");
-    const usersSnapshot = await usersRef.orderByChild("role").equalTo("ADMIN").once("value");
-    const collaboratorsSnapshot = await usersRef.orderByChild("role").equalTo("COLLABORATOR").once("value");
+    const usersSnapshot = await usersRef.once("value");
+
+    if (!usersSnapshot.exists()) {
+      console.log("No se encontraron usuarios.");
+      return res.status(201).json({
+        message:
+          "Orden creada exitosamente, pero no se encontraron usuarios para notificar.",
+      });
+    }
 
     const tokens: string[] = [];
-    
-    // Obtener tokens de los usuarios de tipo ADMIN
+
     usersSnapshot.forEach((childSnapshot) => {
-      const notificationToken = childSnapshot.val().notificationToken;
-      if (notificationToken) {
-        tokens.push(notificationToken);
+      const userData = childSnapshot.val();
+      if (
+        (userData.type === "ADMIN" || userData.type === "COLLABORATOR") &&
+        userData.notificationToken
+      ) {
+        tokens.push(userData.notificationToken);
       }
     });
 
-    // Obtener tokens de los usuarios de tipo COLLABORATOR
-    collaboratorsSnapshot.forEach((childSnapshot) => {
-      const notificationToken = childSnapshot.val().notificationToken;
-      if (notificationToken) {
-        tokens.push(notificationToken);
-      }
-    });
+    console.log("Tokens encontrados:", tokens);
 
     // Enviar notificación push a los tokens obtenidos
     if (tokens.length > 0) {
@@ -91,20 +96,28 @@ export const createOrder = async (req: Request, res: Response) => {
         const message = {
           notification: {
             title: "Nueva Orden Creada",
-            body: `Tu orden para el modelo ${model} ha sido creada exitosamente.`,
+            body: `Se ha creado una nueva orden para el usuario ${email}.`,
           },
           token, // Token individual
         };
 
         try {
           const response = await admin.messaging().send(message);
-          console.log(`Notificación enviada exitosamente al token ${token}:`, response);
+          console.log(
+            `Notificación enviada exitosamente al token ${token}:`,
+            response
+          );
         } catch (error) {
-          console.error(`Error al enviar notificación al token ${token}:`, error);
+          console.error(
+            `Error al enviar notificación al token ${token}:`,
+            error
+          );
         }
       }
     } else {
-      console.log("No se encontraron tokens de notificación para los usuarios.");
+      console.log(
+        "No se encontraron tokens de notificación para los usuarios."
+      );
     }
 
     // Devolver respuesta exitosa
@@ -118,242 +131,6 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
-
-// export const createOrder = async (req: Request, res: Response) => {
-//   const {
-//     userId,
-//     model,
-//     caratage,
-//     color,
-//     rock,
-//     observations,
-//     size,
-//     long,
-//     initialName,
-//     name,
-//     totalPieces,
-//   } = req.body;
-
-//   // Validar campos obligatorios
-//   if (!userId || !model || !caratage || !color) {
-//     return res.status(400).json({
-//       message:
-//         "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
-//     });
-//   }
-
-//   try {
-//     const db = admin.database();
-//     const ordersRef = db.ref("orders");
-
-//     // Crear una nueva referencia para la orden
-//     const newOrderRef = ordersRef.push();
-
-//     // Normalizar los campos opcionales
-//     const normalizeField = (field: any): any[] | null =>
-//       Array.isArray(field) ? field : null;
-
-//     // Construir el objeto de la nueva orden dinámicamente
-//     const newOrder: Record<string, any> = {
-//       userId,
-//       model,
-//       caratage,
-//       color,
-//       observations: observations || "",
-//       size: normalizeField(size),
-//       long: normalizeField(long),
-//       initialName: normalizeField(initialName),
-//       name: normalizeField(name),
-//       totalPieces: totalPieces || null,
-//       createdAt: admin.database.ServerValue.TIMESTAMP,
-//       status: stateType.PENDING,
-//       statusAdmin: stateType.PENDING,
-//     };
-
-//     // Si `rock` viene en la solicitud, se agrega al objeto
-//     if (Array.isArray(rock)) {
-//       newOrder.rock = rock;
-//     }
-
-//     // Guardar la orden en la base de datos
-//     await newOrderRef.set(newOrder);
-
-//     // Enviar notificación push
-//     const tokensRef = db.ref(`tokens/${userId}`);
-//     const tokensSnapshot = await tokensRef.once("value");
-//     const tokens: string[] = tokensSnapshot.val();
-
-//     if (tokens && tokens.length > 0) {
-//       for (const token of tokens) {
-//         const message = {
-//           notification: {
-//             title: "Nueva Orden Creada",
-//             body: `Tu orden para el modelo ${model} ha sido creada exitosamente.`,
-//           },
-//           token, // Token individual
-//         };
-
-//         try {
-//           const response = await admin.messaging().send(message);
-//           console.log(`Notificación enviada exitosamente al token ${token}:`, response);
-//         } catch (error) {
-//           console.error(`Error al enviar notificación al token ${token}:`, error);
-//         }
-//       }
-//     } else {
-//       console.log("No se encontraron tokens de dispositivo para el usuario.");
-//     }
-
-//     // Devolver respuesta exitosa
-//     return res.status(201).json({
-//       message: "Orden creada exitosamente.",
-//       orderId: newOrderRef.key,
-//       order: newOrder,
-//     });
-//   } catch (error) {
-//     console.error("Error al crear la orden:", error);
-//     return res.status(500).json({ message: "Error interno del servidor." });
-//   }
-// };
-// export const createOrder = async (req: Request, res: Response) => {
-//   const {
-//     userId,
-//     model,
-//     caratage,
-//     color,
-//     rock,
-//     observations,
-//     size,
-//     long,
-//     initialName,
-//     name,
-//     totalPieces,
-//   } = req.body;
-
-//   // Validar campos obligatorios
-//   if (!userId || !model || !caratage || !color) {
-//     return res.status(400).json({
-//       message:
-//         "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
-//     });
-//   }
-
-//   try {
-//     const db = admin.database();
-//     const ordersRef = db.ref("orders");
-
-//     // Crear una nueva referencia para la orden
-//     const newOrderRef = ordersRef.push();
-
-//     // Normalizar los campos opcionales
-//     const normalizeField = (field: any): any[] | null =>
-//       Array.isArray(field) ? field : null;
-
-//     // Construir el objeto de la nueva orden dinámicamente
-//     const newOrder: Record<string, any> = {
-//       userId,
-//       model,
-//       caratage,
-//       color,
-//       observations: observations || "",
-//       size: normalizeField(size),
-//       long: normalizeField(long),
-//       initialName: normalizeField(initialName),
-//       name: normalizeField(name),
-//       totalPieces: totalPieces || null,
-//       createdAt: admin.database.ServerValue.TIMESTAMP,
-//       status: stateType.PENDING,
-//       statusAdmin: stateType.PENDING,
-//     };
-
-//     // Si `rock` viene en la solicitud, se agrega al objeto
-//     if (Array.isArray(rock)) {
-//       newOrder.rock = rock;
-//     }
-
-//     // Guardar la orden en la base de datos
-//     await newOrderRef.set(newOrder);
-
-//     // Devolver respuesta exitosa
-//     return res.status(201).json({
-//       message: "Orden creada exitosamente.",
-//       orderId: newOrderRef.key,
-//       order: newOrder,
-//     });
-//   } catch (error) {
-//     console.error("Error al crear la orden:", error);
-//     return res.status(500).json({ message: "Error interno del servidor." });
-//   }
-// };
-
-// export const createOrder = async (req: Request, res: Response) => {
-//   const {
-//     userId,
-//     model,
-//     caratage,
-//     color,
-//     rock,
-//     observations,
-//     size,
-//     long,
-//     initialName,
-//     name,
-//     totalPieces,
-//   } = req.body;
-
-//   // Validar campos obligatorios
-//   if (!userId || !model || !caratage || !color) {
-//     return res.status(400).json({
-//       message:
-//         "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
-//     });
-//   }
-
-//   try {
-//     const db = admin.database();
-//     const ordersRef = db.ref("orders");
-
-//     // Crear una nueva referencia para la orden
-//     const newOrderRef = ordersRef.push();
-
-//     // Normalizar los campos opcionales
-//     const normalizeField = (field: any): any[] | null =>
-//       Array.isArray(field) ? field : null;
-
-//     // Datos de la nueva orden
-//     const newOrder = {
-//       userId,
-//       model,
-//       caratage,
-//       color,
-//       observations: observations || "",
-//       size: normalizeField(size),
-//       long: normalizeField(long),
-//       initialName: normalizeField(initialName),
-//       name: normalizeField(name),
-//       totalPieces: totalPieces || null,
-//       createdAt: admin.database.ServerValue.TIMESTAMP,
-//       status: stateType.PENDING,
-//       statusAdmin: stateType.PENDING,
-//     };
-//     if (Array.isArray(rock)) {
-//       newOrder.rock = rock;
-//     }
-//     // Guardar la orden en la base de datos
-//     await newOrderRef.set(newOrder);
-
-//     // Devolver respuesta exitosa
-//     return res.status(201).json({
-//       message: "Orden creada exitosamente.",
-//       orderId: newOrderRef.key,
-//       order: newOrder,
-//     });
-//   } catch (error) {
-//     console.error("Error al crear la orden:", error);
-//     return res.status(500).json({ message: "Error interno del servidor." });
-//   }
-// };
 
 // Obtener todas las órdenes
 export const getAllOrders = async (req: Request, res: Response) => {
@@ -508,6 +285,7 @@ export const updateOrder = async (req: Request, res: Response) => {
 };
 
 // Editar el status de una orden por ID
+
 export const updateOrderStatus = async (req: Request, res: Response) => {
   const { orderId } = req.params;
   const { status } = req.body;
@@ -520,7 +298,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "El campo status es obligatorio." });
   }
 
-  // Validar que el status sea un valor válido (puedes personalizar esto según los valores que pueda tomar el status)
+  // Validar que el status sea un valor válido
   const validStatuses = ["Pendiente", "En proceso", "Completada", "Cancelada"];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
@@ -541,15 +319,47 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "La orden no existe." });
     }
 
+    // Obtener el userId de la orden
+    const order = snapshot.val();
+    const userId = order.userId;
+
+    // Verificar si el userId existe
+    const userRef = db.ref(`users/${userId}`);
+    const userSnapshot = await userRef.once("value");
+
+    if (!userSnapshot.exists()) {
+      return res.status(404).json({ message: "Usuario no encontrado." });
+    }
+
+    // Obtener el notificationToken del usuario
+    const user = userSnapshot.val();
+    const notificationToken = user.notificationToken;
+		console.log("TCL: updateOrderStatus -> notificationToken del user", notificationToken)
+
+    if (!notificationToken) {
+      return res.status(400).json({ message: "El usuario no tiene token de notificación." });
+    }
+
     // Actualizar el status de la orden
     await orderRef.update({ status });
 
     // Obtener la orden actualizada
     const updatedOrder = (await orderRef.once("value")).val();
 
+    // Enviar notificación FCM al usuario
+    const message = {
+      notification: {
+        title: "Actualización de Orden",
+        body: `El estado de tu orden ha sido actualizado a: ${status}`,
+      },
+      token: notificationToken,
+    };
+
+    await admin.messaging().send(message);
+
     // Respuesta exitosa
     return res.status(200).json({
-      message: "Status de la orden actualizado exitosamente.",
+      message: "Status de la orden actualizado exitosamente y notificación enviada.",
       order: updatedOrder,
     });
   } catch (error) {
@@ -557,6 +367,56 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
+// export const updateOrderStatus = async (req: Request, res: Response) => {
+//   const { orderId } = req.params;
+//   const { status } = req.body;
+
+//   // Validar que se envíe el orderId y el status
+//   if (!orderId) {
+//     return res.status(400).json({ message: "El orderId es obligatorio." });
+//   }
+//   if (!status) {
+//     return res.status(400).json({ message: "El campo status es obligatorio." });
+//   }
+
+//   // Validar que el status sea un valor válido (puedes personalizar esto según los valores que pueda tomar el status)
+//   const validStatuses = ["Pendiente", "En proceso", "Completada", "Cancelada"];
+//   if (!validStatuses.includes(status)) {
+//     return res.status(400).json({
+//       message: `El valor del status debe ser uno de los siguientes: ${validStatuses.join(
+//         ", "
+//       )}`,
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const orderRef = db.ref(`orders/${orderId}`);
+
+//     // Verificar si la orden existe
+//     const snapshot = await orderRef.once("value");
+
+//     if (!snapshot.exists()) {
+//       return res.status(404).json({ message: "La orden no existe." });
+//     }
+
+//     // Actualizar el status de la orden
+//     await orderRef.update({ status });
+
+//     // Obtener la orden actualizada
+//     const updatedOrder = (await orderRef.once("value")).val();
+
+//     // Respuesta exitosa
+//     return res.status(200).json({
+//       message: "Status de la orden actualizado exitosamente.",
+//       order: updatedOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al actualizar el status de la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 
 export const updateOrderStatusAdmin = async (req: Request, res: Response) => {
   const { orderId } = req.params;
@@ -644,6 +504,7 @@ export const getOrderById = async (req: Request, res: Response) => {
   }
 };
 
+
 export const addFolioToOrder = async (req: Request, res: Response) => {
   const { orderId } = req.params;
   const { folio } = req.body;
@@ -666,15 +527,46 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "La orden no existe." });
     }
 
+    // Obtener el userId de la orden
+    const order = snapshot.val();
+    const userId = order.userId;
+
+    // Verificar si el userId existe
+    const userRef = db.ref(`users/${userId}`);
+    const userSnapshot = await userRef.once("value");
+
+    if (!userSnapshot.exists()) {
+      return res.status(404).json({ message: "Usuario no encontrado." });
+    }
+
+    // Obtener el notificationToken del usuario
+    const user = userSnapshot.val();
+    const notificationToken = user.notificationToken;
+
+    if (!notificationToken) {
+      return res.status(400).json({ message: "El usuario no tiene token de notificación." });
+    }
+
     // Actualizar el campo folio de la orden
     await orderRef.update({ folio });
 
     // Obtener la orden actualizada
     const updatedOrder = (await orderRef.once("value")).val();
 
+    // Enviar notificación FCM al usuario
+    const message = {
+      notification: {
+        title: "Tu orden cambio de estado",
+        body: `Tu orden con id ${orderId} ha cambiado de estado exitosamente con folio #: ${folio}`,
+      },
+      token: notificationToken,
+    };
+
+    await admin.messaging().send(message);
+
     // Respuesta exitosa
     return res.status(200).json({
-      message: "Folio agregado exitosamente a la orden.",
+      message: "Folio agregado exitosamente a la orden y notificación enviada.",
       order: updatedOrder,
     });
   } catch (error) {
@@ -683,6 +575,44 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
   }
 };
 
+// export const addFolioToOrder = async (req: Request, res: Response) => {
+//   const { orderId } = req.params;
+//   const { folio } = req.body;
+
+//   // Validar que se envíe el orderId y el folio
+//   if (!orderId) {
+//     return res.status(400).json({ message: "El orderId es obligatorio." });
+//   }
+//   if (!folio) {
+//     return res.status(400).json({ message: "El campo folio es obligatorio." });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const orderRef = db.ref(`orders/${orderId}`);
+
+//     // Verificar si la orden existe
+//     const snapshot = await orderRef.once("value");
+//     if (!snapshot.exists()) {
+//       return res.status(404).json({ message: "La orden no existe." });
+//     }
+
+//     // Actualizar el campo folio de la orden
+//     await orderRef.update({ folio });
+
+//     // Obtener la orden actualizada
+//     const updatedOrder = (await orderRef.once("value")).val();
+
+//     // Respuesta exitosa
+//     return res.status(200).json({
+//       message: "Folio agregado exitosamente a la orden.",
+//       order: updatedOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al adicionar el folio a la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 
 // Guardar el token de notificación del usuario
 // export const saveNotificationToken = async (req: Request, res: Response) => {
@@ -751,5 +681,45 @@ export const saveNotificationToken = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error al guardar el token de notificación:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+// Controlador para enviar un mensaje de prueba
+export const testMessage = async (req: Request, res: Response) => {
+  const { token, message } = req.body;
+
+  // Validar campos obligatorios
+  if (!token || !message) {
+    return res.status(400).json({
+      message: "Los campos 'token' y 'message' son requeridos.",
+    });
+  }
+
+  try {
+    // Construir el mensaje
+    const payload = {
+      notification: {
+        title: "Mensaje de prueba",
+        body: message,
+      },
+      token, // Token individual proporcionado
+    };
+
+    // Enviar el mensaje usando Firebase Admin SDK
+    const response = await admin.messaging().send(payload);
+
+    console.log(`Notificación enviada exitosamente: ${response}`);
+
+    // Responder al cliente
+    return res.status(200).json({
+      message: "Notificación enviada exitosamente.",
+      response,
+    });
+  } catch (error: any) {
+    console.error("Error al enviar la notificación:", error);
+    return res.status(500).json({
+      message: "Error al enviar la notificación.",
+      error: error.message || "Error desconocido",
+    });
   }
 };

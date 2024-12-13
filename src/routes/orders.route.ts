@@ -10,6 +10,7 @@ import {
   updateOrderStatusAdmin,
   addFolioToOrder,
   saveNotificationToken,
+  testMessage,
 } from "../controller/orders.controller";
 
 const router = Router();
@@ -24,5 +25,6 @@ router.get("/get_orders", getAllOrders);
 router.get("/orders/user/:userId", getOrdersByUserId);
 router.get("/orders/:orderId", getOrderById);
 router.post("/api/save-token", saveNotificationToken);
+router.post("/testmessages", testMessage);
 
 export default router;
