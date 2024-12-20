@@ -225,10 +225,9 @@ export const createOrder = async (req: Request, res: Response) => {
           notification: {
             title: "Nueva Orden Creada",
             body: `Se ha creado una nueva orden para el usuario ${email}.`,
-            icon: "https://www.fonellipedidos.com/icon.png",
-            click_action: "https://www.fonellipedidos.com",
           },
           data: {
+            icon: "https://www.fonellipedidos.com/icon.png",
             click_action: "https://www.fonellipedidos.com",
           },
           token,
