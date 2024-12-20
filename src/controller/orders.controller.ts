@@ -225,6 +225,11 @@ export const createOrder = async (req: Request, res: Response) => {
           notification: {
             title: "Nueva Orden Creada",
             body: `Se ha creado una nueva orden para el usuario ${email}.`,
+            icon: "https://www.fonellipedidos.com/icon.png",
+            click_action: "https://www.fonellipedidos.com",
+          },
+          data: {
+            click_action: "https://www.fonellipedidos.com",
           },
           token,
         };
@@ -259,7 +264,6 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
 
 // Obtener todas las órdenes
 export const getAllOrders = async (req: Request, res: Response) => {
