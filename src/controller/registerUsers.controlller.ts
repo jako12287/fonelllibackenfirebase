@@ -26,18 +26,27 @@ const transporter: Transporter = nodemailer.createTransport({
 //create new user
 
 export const resgisterUser = async (req: Request, res: Response) => {
-  const { email, password, type } = req.body;
+  const { email, password, type, customerNumber } = req.body;
   if (!email || !password || !type) {
     return res
       .status(400)
       .json({ message: "Todos los campos son requeridos." });
   }
 
+  const dataEmail: any = {
+    email,
+    password,
+  };
+
+  if (type === userType.CUSTOMER && customerNumber) {
+    dataEmail.customerNumber = customerNumber;
+  }
+
   const usermailOptions: SendMailOptions = {
     from: EMAIL,
     to: email,
     subject: "Bienvenido a Fonelli",
-    html: htmlContentUser({ email, password }),
+    html: htmlContentUser(dataEmail),
   };
 
   try {
@@ -56,15 +65,19 @@ export const resgisterUser = async (req: Request, res: Response) => {
 
     const newUserRef = ref.push();
 
+    const dataNewUser: any = {
+      email,
+      password,
+      type,
+      orders: [],
+      verify: false,
+      createdAt: admin.database.ServerValue.TIMESTAMP,
+    };
+    if (type === userType.CUSTOMER) {
+      dataNewUser.customerNumber = customerNumber;
+    }
     try {
-      await newUserRef.set({
-        email,
-        password,
-        type,
-        orders: [],
-        verify: false,
-        createdAt: admin.database.ServerValue.TIMESTAMP,
-      });
+      await newUserRef.set(dataNewUser);
       console.log("Usuario creado en Firebase.");
     } catch (error) {
       console.error("Error al guardar usuario:", error);
@@ -208,7 +221,7 @@ export const getUserById = async (req: Request, res: Response) => {
 //Chage data user
 
 export const changeDataUser = async (req: Request, res: Response) => {
-  const { _id, email, password, type } = req.body;
+  const { _id, email, password, type, customerNumber } = req.body;
 
   if (!_id || (!email && !password && !type)) {
     return res.status(400).json({
@@ -233,20 +246,28 @@ export const changeDataUser = async (req: Request, res: Response) => {
       updates.verify = false;
     }
     if (type) updates.type = type;
+    if (customerNumber && type === userType.CUSTOMER) {
+      updates.customerNumber = customerNumber;
+    }
 
     await userRef.update(updates);
 
     const userEmail = email || snapshot.val().email;
 
+    const dataEmail: any = {
+      email,
+      password: !password ? "La contraseña no se modificó" : password,
+    };
+
+    if (type === userType.CUSTOMER && customerNumber) {
+      dataEmail.customerNumber = customerNumber;
+    }
+
     const userMailOptions: SendMailOptions = {
       from: EMAIL,
       to: userEmail,
       subject: "Actualización de datos de tu cuenta",
-      html: htmlContentUpdateUser({
-        email,
-        password: !password ? "La contraseña no se modificó" : password,
-        type: !type ? "N/A" : type === "CUSTOMER" ? "Usuario" : "Colaborador",
-      }),
+      html: htmlContentUpdateUser(dataEmail),
     };
 
     try {

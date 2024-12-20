@@ -23,7 +23,7 @@ export const createOrder = async (req: Request, res: Response) => {
   if (!userId || !model || !caratage || !color || !email) {
     return res.status(400).json({
       message:
-        "Los campos obligatorios (userId, model, caratage, color) son requeridos.",
+        "Los campos obligatorios (userId, model, caratage, color, email) son requeridos.",
     });
   }
 
