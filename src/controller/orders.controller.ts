@@ -3,6 +3,134 @@ import * as admin from "firebase-admin";
 import { stateType } from "../types/models/userModel";
 
 // Crear una nueva orden
+// export const createOrder = async (req: Request, res: Response) => {
+//   const {
+//     userId,
+//     email,
+//     model,
+//     caratage,
+//     color,
+//     rock,
+//     observations,
+//     size,
+//     long,
+//     initialName,
+//     name,
+//     totalPieces,
+//   } = req.body;
+
+//   // Validar campos obligatorios
+//   if (!userId || !model || !caratage || !color || !email) {
+//     return res.status(400).json({
+//       message:
+//         "Los campos obligatorios (userId, model, caratage, color, email) son requeridos.",
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const ordersRef = db.ref("orders");
+
+//     // Crear una nueva referencia para la orden
+//     const newOrderRef = ordersRef.push();
+
+//     // Normalizar los campos opcionales
+//     const normalizeField = (field: any): any[] | null =>
+//       Array.isArray(field) ? field : null;
+
+//     // Construir el objeto de la nueva orden dinámicamente
+//     const newOrder: Record<string, any> = {
+//       userId,
+//       model,
+//       email,
+//       caratage,
+//       color,
+//       observations: observations || "",
+//       size: normalizeField(size),
+//       long: normalizeField(long),
+//       initialName: normalizeField(initialName),
+//       name: normalizeField(name),
+//       totalPieces: totalPieces || null,
+//       createdAt: admin.database.ServerValue.TIMESTAMP,
+//       status: stateType.PENDING,
+//       statusAdmin: stateType.PENDING,
+//     };
+
+//     // Si `rock` viene en la solicitud, se agrega al objeto
+//     if (Array.isArray(rock)) {
+//       newOrder.rock = rock;
+//     }
+
+//     // Guardar la orden en la base de datos
+//     await newOrderRef.set(newOrder);
+
+//     // Verificar los usuarios de tipo ADMIN y COLLABORATOR y obtener sus tokens
+//     const usersRef = db.ref("users");
+//     const usersSnapshot = await usersRef.once("value");
+
+//     if (!usersSnapshot.exists()) {
+//       console.log("No se encontraron usuarios.");
+//       return res.status(201).json({
+//         message:
+//           "Orden creada exitosamente, pero no se encontraron usuarios para notificar.",
+//       });
+//     }
+
+//     const tokens: string[] = [];
+
+//     usersSnapshot.forEach((childSnapshot) => {
+//       const userData = childSnapshot.val();
+//       if (
+//         (userData.type === "ADMIN" || userData.type === "COLLABORATOR") &&
+//         userData.notificationToken
+//       ) {
+//         tokens.push(userData.notificationToken);
+//       }
+//     });
+
+//     console.log("Tokens encontrados:", tokens);
+
+//     // Enviar notificación push a los tokens obtenidos
+//     if (tokens.length > 0) {
+//       for (const token of tokens) {
+//         const message = {
+//           notification: {
+//             title: "Nueva Orden Creada",
+//             body: `Se ha creado una nueva orden para el usuario ${email}.`,
+//           },
+//           token, // Token individual
+//         };
+
+//         try {
+//           const response = await admin.messaging().send(message);
+//           console.log(
+//             `Notificación enviada exitosamente al token ${token}:`,
+//             response
+//           );
+//         } catch (error) {
+//           console.error(
+//             `Error al enviar notificación al token ${token}:`,
+//             error
+//           );
+//         }
+//       }
+//     } else {
+//       console.log(
+//         "No se encontraron tokens de notificación para los usuarios."
+//       );
+//     }
+
+//     // Devolver respuesta exitosa
+//     return res.status(201).json({
+//       message: "Orden creada exitosamente.",
+//       orderId: newOrderRef.key,
+//       order: newOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al crear la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 export const createOrder = async (req: Request, res: Response) => {
   const {
     userId,
@@ -82,15 +210,15 @@ export const createOrder = async (req: Request, res: Response) => {
       const userData = childSnapshot.val();
       if (
         (userData.type === "ADMIN" || userData.type === "COLLABORATOR") &&
-        userData.notificationToken
+        Array.isArray(userData.notificationTokens)
       ) {
-        tokens.push(userData.notificationToken);
+        tokens.push(...userData.notificationTokens);
       }
     });
 
     console.log("Tokens encontrados:", tokens);
 
-    // Enviar notificación push a los tokens obtenidos
+    // Enviar notificaciones push a los tokens obtenidos
     if (tokens.length > 0) {
       for (const token of tokens) {
         const message = {
@@ -98,7 +226,7 @@ export const createOrder = async (req: Request, res: Response) => {
             title: "Nueva Orden Creada",
             body: `Se ha creado una nueva orden para el usuario ${email}.`,
           },
-          token, // Token individual
+          token,
         };
 
         try {
@@ -131,6 +259,7 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
 
 // Obtener todas las órdenes
 export const getAllOrders = async (req: Request, res: Response) => {
@@ -334,10 +463,15 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     // Obtener el notificationToken del usuario
     const user = userSnapshot.val();
     const notificationToken = user.notificationToken;
-		console.log("TCL: updateOrderStatus -> notificationToken del user", notificationToken)
+    console.log(
+      "TCL: updateOrderStatus -> notificationToken del user",
+      notificationToken
+    );
 
     if (!notificationToken) {
-      return res.status(400).json({ message: "El usuario no tiene token de notificación." });
+      return res
+        .status(400)
+        .json({ message: "El usuario no tiene token de notificación." });
     }
 
     // Actualizar el status de la orden
@@ -359,7 +493,8 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     // Respuesta exitosa
     return res.status(200).json({
-      message: "Status de la orden actualizado exitosamente y notificación enviada.",
+      message:
+        "Status de la orden actualizado exitosamente y notificación enviada.",
       order: updatedOrder,
     });
   } catch (error) {
@@ -504,7 +639,6 @@ export const getOrderById = async (req: Request, res: Response) => {
   }
 };
 
-
 export const addFolioToOrder = async (req: Request, res: Response) => {
   const { orderId } = req.params;
   const { folio } = req.body;
@@ -544,7 +678,9 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
     const notificationToken = user.notificationToken;
 
     if (!notificationToken) {
-      return res.status(400).json({ message: "El usuario no tiene token de notificación." });
+      return res
+        .status(400)
+        .json({ message: "El usuario no tiene token de notificación." });
     }
 
     // Actualizar el campo folio de la orden
@@ -650,6 +786,39 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
 //   }
 // };
 
+// export const saveNotificationToken = async (req: Request, res: Response) => {
+//   const { userId, token } = req.body;
+
+//   // Validar los campos obligatorios
+//   if (!userId || !token) {
+//     return res.status(400).json({
+//       message: "Los campos 'userId' y 'token' son requeridos.",
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const userProfileRef = db.ref(`users/${userId}`);
+
+//     // Obtener el perfil del usuario
+//     const userProfileSnapshot = await userProfileRef.once("value");
+//     if (!userProfileSnapshot.exists()) {
+//       return res.status(404).json({ message: "El usuario no existe." });
+//     }
+
+//     // Actualizar el token en el perfil del usuario
+//     await userProfileRef.update({ notificationToken: token });
+
+//     return res.status(200).json({
+//       message: "Token de notificación guardado exitosamente.",
+//       userId,
+//       notificationToken: token,
+//     });
+//   } catch (error) {
+//     console.error("Error al guardar el token de notificación:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 export const saveNotificationToken = async (req: Request, res: Response) => {
   const { userId, token } = req.body;
 
@@ -670,13 +839,22 @@ export const saveNotificationToken = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "El usuario no existe." });
     }
 
-    // Actualizar el token en el perfil del usuario
-    await userProfileRef.update({ notificationToken: token });
+    // Obtener los tokens actuales (si existen)
+    const currentTokens =
+      userProfileSnapshot.child("notificationTokens").val() || [];
+
+    // Verificar si el token ya existe para evitar duplicados
+    if (!currentTokens.includes(token)) {
+      currentTokens.push(token);
+
+      // Guardar la lista actualizada de tokens
+      await userProfileRef.update({ notificationTokens: currentTokens });
+    }
 
     return res.status(200).json({
       message: "Token de notificación guardado exitosamente.",
       userId,
-      notificationToken: token,
+      notificationTokens: currentTokens,
     });
   } catch (error) {
     console.error("Error al guardar el token de notificación:", error);

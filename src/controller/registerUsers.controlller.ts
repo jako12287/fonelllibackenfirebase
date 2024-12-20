@@ -71,6 +71,7 @@ export const resgisterUser = async (req: Request, res: Response) => {
       type,
       orders: [],
       verify: false,
+      changePass: 0,
       createdAt: admin.database.ServerValue.TIMESTAMP,
     };
     if (type === userType.CUSTOMER) {
@@ -144,6 +145,7 @@ export const changepassword = async (req: Request, res: Response) => {
     await userRef.update({
       password: hashedPassword,
       verify: true,
+      changePass: 1,
     });
 
     return res

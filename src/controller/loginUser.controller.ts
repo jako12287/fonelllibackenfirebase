@@ -29,18 +29,21 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const user = snapshot.val();
-    const userId = Object.keys(user)[0]
+    const userId = Object.keys(user)[0];
     const userData: any = Object.values(user)[0];
 
     let isValidPassword = false;
 
     // Verificar la contraseña según el valor de "verify"
-    console.log("campo verify", userData.verify)
-    console.log("userData", {...userData, userId})
-    console.log("password", password)
+    console.log("campo verify", userData.verify);
+    console.log("userData", { ...userData, userId });
+    console.log("password", password);
     if (userData.verify) {
       // Si está encriptada, usar bcrypt
-      isValidPassword = await bcrypt.compare(password.toString(), userData.password.toString());
+      isValidPassword = await bcrypt.compare(
+        password.toString(),
+        userData.password.toString()
+      );
     } else {
       // Si no está encriptada, comparar directamente
       isValidPassword = userData.password.toString() === password.toString();
@@ -60,7 +63,13 @@ export const login = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: "Login exitoso.",
       token,
-      user: {_id:userId, email: userData.email, type: userData.type, verify: userData.verify},
+      user: {
+        _id: userId,
+        email: userData.email,
+        type: userData.type,
+        verify: userData.verify,
+        changePass: userData.changePass,
+      },
     });
   } catch (error) {
     console.error("Error en el login:", error);
