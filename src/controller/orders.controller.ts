@@ -221,16 +221,17 @@ export const createOrder = async (req: Request, res: Response) => {
     // Enviar notificaciones push a los tokens obtenidos
     if (tokens.length > 0) {
       for (const token of tokens) {
-        const message = {
+        const message: any = {
+          token,
           notification: {
             title: "Nueva Orden Creada",
             body: `Se ha creado una nueva orden para el usuario ${email}.`,
           },
-          data: {
-            icon: "https://www.fonellipedidos.com/icon.png",
-            click_action: "https://www.fonellipedidos.com",
+          webpush: {
+            fcm_options: {
+              link: "https://www.fonellipedidos.com",
+            },
           },
-          token,
         };
 
         try {
