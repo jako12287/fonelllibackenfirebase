@@ -72,6 +72,7 @@ export const resgisterUser = async (req: Request, res: Response) => {
       orders: [],
       verify: false,
       changePass: 0,
+      sessionActive: false,
       createdAt: admin.database.ServerValue.TIMESTAMP,
     };
     if (type === userType.CUSTOMER) {
