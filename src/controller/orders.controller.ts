@@ -419,6 +419,94 @@ export const updateOrder = async (req: Request, res: Response) => {
 
 // Editar el status de una orden por ID
 
+// export const updateOrderStatus = async (req: Request, res: Response) => {
+//   const { orderId } = req.params;
+//   const { status } = req.body;
+
+//   // Validar que se envíe el orderId y el status
+//   if (!orderId) {
+//     return res.status(400).json({ message: "El orderId es obligatorio." });
+//   }
+//   if (!status) {
+//     return res.status(400).json({ message: "El campo status es obligatorio." });
+//   }
+
+//   // Validar que el status sea un valor válido
+//   const validStatuses = ["Pendiente", "En proceso", "Completada", "Cancelada"];
+//   if (!validStatuses.includes(status)) {
+//     return res.status(400).json({
+//       message: `El valor del status debe ser uno de los siguientes: ${validStatuses.join(
+//         ", "
+//       )}`,
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const orderRef = db.ref(`orders/${orderId}`);
+
+//     // Verificar si la orden existe
+//     const snapshot = await orderRef.once("value");
+
+//     if (!snapshot.exists()) {
+//       return res.status(404).json({ message: "La orden no existe." });
+//     }
+
+//     // Obtener el userId de la orden
+//     const order = snapshot.val();
+//     const userId = order.userId;
+
+//     // Verificar si el userId existe
+//     const userRef = db.ref(`users/${userId}`);
+//     const userSnapshot = await userRef.once("value");
+
+//     if (!userSnapshot.exists()) {
+//       return res.status(404).json({ message: "Usuario no encontrado." });
+//     }
+
+//     // Obtener el notificationToken del usuario
+//     const user = userSnapshot.val();
+//     const notificationToken = user.notificationToken;
+//     console.log(
+//       "TCL: updateOrderStatus -> notificationToken del user",
+//       notificationToken
+//     );
+
+//     if (!notificationToken) {
+//       return res
+//         .status(400)
+//         .json({ message: "El usuario no tiene token de notificación." });
+//     }
+
+//     // Actualizar el status de la orden
+//     await orderRef.update({ status });
+
+//     // Obtener la orden actualizada
+//     const updatedOrder = (await orderRef.once("value")).val();
+
+//     // Enviar notificación FCM al usuario
+//     const message = {
+//       notification: {
+//         title: "Actualización de Orden",
+//         body: `El estado de tu orden ha sido actualizado a: ${status}`,
+//       },
+//       token: notificationToken,
+//     };
+
+//     await admin.messaging().send(message);
+
+//     // Respuesta exitosa
+//     return res.status(200).json({
+//       message:
+//         "Status de la orden actualizado exitosamente y notificación enviada.",
+//       order: updatedOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al actualizar el status de la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
+
 export const updateOrderStatus = async (req: Request, res: Response) => {
   const { orderId } = req.params;
   const { status } = req.body;
@@ -447,7 +535,6 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     // Verificar si la orden existe
     const snapshot = await orderRef.once("value");
-
     if (!snapshot.exists()) {
       return res.status(404).json({ message: "La orden no existe." });
     }
@@ -459,23 +546,19 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     // Verificar si el userId existe
     const userRef = db.ref(`users/${userId}`);
     const userSnapshot = await userRef.once("value");
-
     if (!userSnapshot.exists()) {
       return res.status(404).json({ message: "Usuario no encontrado." });
     }
 
-    // Obtener el notificationToken del usuario
+    // Obtener los notificationTokens del usuario
     const user = userSnapshot.val();
-    const notificationToken = user.notificationToken;
-    console.log(
-      "TCL: updateOrderStatus -> notificationToken del user",
-      notificationToken
-    );
+    const notificationTokens: string[] = user.notificationTokens || [];
+    console.log("Tokens encontrados para el usuario:", notificationTokens);
 
-    if (!notificationToken) {
+    if (notificationTokens.length === 0) {
       return res
         .status(400)
-        .json({ message: "El usuario no tiene token de notificación." });
+        .json({ message: "El usuario no tiene tokens de notificación." });
     }
 
     // Actualizar el status de la orden
@@ -484,21 +567,28 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     // Obtener la orden actualizada
     const updatedOrder = (await orderRef.once("value")).val();
 
-    // Enviar notificación FCM al usuario
-    const message = {
-      notification: {
-        title: "Actualización de Orden",
-        body: `El estado de tu orden ha sido actualizado a: ${status}`,
-      },
-      token: notificationToken,
-    };
+    // Enviar notificaciones FCM a todos los tokens del usuario
+    for (const token of notificationTokens) {
+      const message = {
+        notification: {
+          title: "Actualización de Orden",
+          body: `El estado de tu orden ha sido actualizado a: ${status}`,
+        },
+        token,
+      };
 
-    await admin.messaging().send(message);
+      try {
+        const response = await admin.messaging().send(message);
+        console.log(`Notificación enviada exitosamente al token ${token}:`, response);
+      } catch (error) {
+        console.error(`Error al enviar notificación al token ${token}:`, error);
+      }
+    }
 
     // Respuesta exitosa
     return res.status(200).json({
       message:
-        "Status de la orden actualizado exitosamente y notificación enviada.",
+        "Status de la orden actualizado exitosamente y notificaciones enviadas.",
       order: updatedOrder,
     });
   } catch (error) {
@@ -506,6 +596,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
 
 // export const updateOrderStatus = async (req: Request, res: Response) => {
 //   const { orderId } = req.params;
