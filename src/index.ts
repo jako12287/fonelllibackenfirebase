@@ -4,6 +4,7 @@ import RouterRegister from "./routes/users.route";
 import RouterTestStatusDB from "./routes/testStatusBD.route";
 import RouterLogin from "./routes/login.route";
 import RouterOrders from "./routes/orders.route";
+import RouterNotifications from "./routes/notificationHistory.route";
 import * as dotenv from "dotenv";
 import cors from "cors";
 dotenv.config();
@@ -39,6 +40,7 @@ app.use(RouterRegister);
 app.use(RouterTestStatusDB);
 app.use(RouterLogin);
 app.use(RouterOrders);
+app.use(RouterNotifications);
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
