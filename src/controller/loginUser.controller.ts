@@ -86,6 +86,7 @@ export const login = async (req: Request, res: Response) => {
         type: userData.type,
         verify: userData.verify,
         changePass: userData.changePass,
+        customerNumber: userData.customerNumber,
       },
     });
   } catch (error) {
