@@ -167,6 +167,7 @@ export const createOrder = async (req: Request, res: Response) => {
     initialName,
     name,
     totalPieces,
+    customerNumber,
   } = req.body;
 
   // Validar campos obligatorios
@@ -193,6 +194,7 @@ export const createOrder = async (req: Request, res: Response) => {
       userId,
       model,
       email,
+      customerNumber,
       caratage,
       color,
       observations: observations || "",
@@ -219,6 +221,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const notificationData = {
       orderId: newOrderRef.key,
       email,
+      customerNumber,
       userId,
       model,
       caratage,
@@ -262,16 +265,21 @@ export const createOrder = async (req: Request, res: Response) => {
           token,
           notification: {
             title: "Nueva Orden Creada",
-            body: `Se ha creado una nueva orden para el usuario ${email}.`,
-            sound: "default",
-            icon: "https://www.fonellipedidos.com/icon.png",
+            body: `Nueva orden para el usuario ${customerNumber}/ ${email}.`,
           },
           webpush: {
             fcm_options: {
-              link: "https://www.fonellipedidos.com",
+              link: "https://www.fonellipedidos.com", // URL de redirección
+            },
+            notification: {
+              icon: "https://www.fonellipedidos.com/icon.png", // Configurar el ícono aquí
+              requireInteraction: true, // Mantiene la notificación visible hasta la interacción
             },
           },
         };
+        
+        
+        
 
         try {
           const response = await admin.messaging().send(message);
