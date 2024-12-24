@@ -58,16 +58,17 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Verificar si el usuario es ADMIN o COLLABORATOR
-    if (userData.type === 'ADMIN' || userData.type === 'COLLABORATOR') {
+    if (userData.type === "ADMIN" || userData.type === "COLLABORATOR") {
       // Verificar si ya hay una sesión activa para este usuario
       if (userData.sessionActive === true) {
-        return res.status(403).json({ message: "Ya tienes una sesión activa." });
+        return res
+          .status(403)
+          .json({ message: "Ya tienes una sesión activa." });
       }
 
       // Si no hay sesión activa, establecer sessionActive a true
       await ref.child(userId).update({ sessionActive: true });
     }
-
 
     // Generar el token si la contraseña es válida
     const token = jwt.sign(
@@ -93,8 +94,7 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-
-export const logout = (req:Request, res:Response)=>{
+export const logout = (req: Request, res: Response) => {
   const { userId } = req.body;
   if (!userId) {
     return res.status(400).json({ message: "Faltan campos requeridos." });
@@ -111,5 +111,4 @@ export const logout = (req:Request, res:Response)=>{
     console.error("Error en el logout:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
   }
-}
-
+};
