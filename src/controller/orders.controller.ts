@@ -2,140 +2,6 @@ import { Request, Response } from "express";
 import * as admin from "firebase-admin";
 import { stateType } from "../types/models/userModel";
 
-// export const createOrder = async (req: Request, res: Response) => {
-//   const {
-//     userId,
-//     email,
-//     model,
-//     caratage,
-//     color,
-//     rock,
-//     observations,
-//     size,
-//     long,
-//     initialName,
-//     name,
-//     totalPieces,
-//   } = req.body;
-
-//   // Validar campos obligatorios
-//   if (!userId || !model || !caratage || !color || !email) {
-//     return res.status(400).json({
-//       message:
-//         "Los campos obligatorios (userId, model, caratage, color, email) son requeridos.",
-//     });
-//   }
-
-//   try {
-//     const db = admin.database();
-//     const ordersRef = db.ref("orders");
-
-//     // Crear una nueva referencia para la orden
-//     const newOrderRef = ordersRef.push();
-
-//     // Normalizar los campos opcionales
-//     const normalizeField = (field: any): any[] | null =>
-//       Array.isArray(field) ? field : null;
-
-//     // Construir el objeto de la nueva orden dinámicamente
-//     const newOrder: Record<string, any> = {
-//       userId,
-//       model,
-//       email,
-//       caratage,
-//       color,
-//       observations: observations || "",
-//       size: normalizeField(size),
-//       long: normalizeField(long),
-//       initialName: normalizeField(initialName),
-//       name: normalizeField(name),
-//       totalPieces: totalPieces || null,
-//       createdAt: admin.database.ServerValue.TIMESTAMP,
-//       status: stateType.PENDING,
-//       statusAdmin: stateType.PENDING,
-//     };
-
-//     // Si `rock` viene en la solicitud, se agrega al objeto
-//     if (Array.isArray(rock)) {
-//       newOrder.rock = rock;
-//     }
-
-//     // Guardar la orden en la base de datos
-//     await newOrderRef.set(newOrder);
-
-//     // Verificar los usuarios de tipo ADMIN y COLLABORATOR y obtener sus tokens
-//     const usersRef = db.ref("users");
-//     const usersSnapshot = await usersRef.once("value");
-
-//     if (!usersSnapshot.exists()) {
-//       console.log("No se encontraron usuarios.");
-//       return res.status(201).json({
-//         message:
-//           "Orden creada exitosamente, pero no se encontraron usuarios para notificar.",
-//       });
-//     }
-
-//     const tokens: string[] = [];
-
-//     usersSnapshot.forEach((childSnapshot) => {
-//       const userData = childSnapshot.val();
-//       if (
-//         (userData.type === "ADMIN" || userData.type === "COLLABORATOR") &&
-//         Array.isArray(userData.notificationTokens)
-//       ) {
-//         tokens.push(...userData.notificationTokens);
-//       }
-//     });
-
-//     console.log("Tokens encontrados:", tokens);
-
-//     // Enviar notificaciones push a los tokens obtenidos
-//     if (tokens.length > 0) {
-//       for (const token of tokens) {
-//         const message: any = {
-//           token,
-//           notification: {
-//             title: "Nueva Orden Creada",
-//             body: `Se ha creado una nueva orden para el usuario ${email}.`,
-//           },
-//           webpush: {
-//             fcm_options: {
-//               link: "https://www.fonellipedidos.com",
-//             },
-//           },
-//         };
-
-//         try {
-//           const response = await admin.messaging().send(message);
-//           console.log(
-//             `Notificación enviada exitosamente al token ${token}:`,
-//             response
-//           );
-//         } catch (error) {
-//           console.error(
-//             `Error al enviar notificación al token ${token}:`,
-//             error
-//           );
-//         }
-//       }
-//     } else {
-//       console.log(
-//         "No se encontraron tokens de notificación para los usuarios."
-//       );
-//     }
-
-//     // Devolver respuesta exitosa
-//     return res.status(201).json({
-//       message: "Orden creada exitosamente.",
-//       orderId: newOrderRef.key,
-//       order: newOrder,
-//     });
-//   } catch (error) {
-//     console.error("Error al crear la orden:", error);
-//     return res.status(500).json({ message: "Error interno del servidor." });
-//   }
-// };
-
 export const createOrder = async (req: Request, res: Response) => {
   const {
     userId,
@@ -185,8 +51,8 @@ export const createOrder = async (req: Request, res: Response) => {
       name: normalizeField(name),
       totalPieces: totalPieces || null,
       createdAt: admin.database.ServerValue.TIMESTAMP,
-      status: "PENDING", // Suponiendo que 'stateType.PENDING' es "PENDING"
-      statusAdmin: "PENDING", // Suponiendo que 'stateType.PENDING' es "PENDING"
+      status: stateType.PENDING,
+      statusAdmin: stateType.PENDING,
     };
 
     // Si `rock` viene en la solicitud, se agrega al objeto
@@ -206,7 +72,7 @@ export const createOrder = async (req: Request, res: Response) => {
       model,
       caratage,
       color,
-      status: "PENDING",
+      status: stateType.PENDING,
       createdAt: admin.database.ServerValue.TIMESTAMP,
     };
 
@@ -247,6 +113,8 @@ export const createOrder = async (req: Request, res: Response) => {
           notification: {
             title: "Nueva Orden Creada",
             body: `Se ha creado una nueva orden para el usuario ${email}.`,
+            sound: "default", // Puedes reemplazar "default" con el nombre de tu archivo de sonido si tienes uno personalizado
+            icon: "https://www.fonellipedidos.com/icon.png", // URL del icono que quieras mostrar
           },
           webpush: {
             fcm_options: {
@@ -285,7 +153,6 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
 
 // Obtener todas las órdenes
 export const getAllOrders = async (req: Request, res: Response) => {
@@ -618,6 +485,7 @@ export const getOrderById = async (req: Request, res: Response) => {
   }
 };
 
+
 export const addFolioToOrder = async (req: Request, res: Response) => {
   const { orderId } = req.params;
   const { folio } = req.body;
@@ -656,38 +524,34 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
     const user = userSnapshot.val();
     const notificationTokens = user.notificationTokens;
 
-    if (!Array.isArray(notificationTokens) || notificationTokens.length === 0) {
-      return res.status(400).json({
-        message: "El usuario no tiene tokens de notificación válidos.",
-      });
-    }
-
     // Actualizar el campo folio de la orden
     await orderRef.update({ folio });
 
     // Obtener la orden actualizada
     const updatedOrder = (await orderRef.once("value")).val();
 
-    // Enviar notificación FCM a todos los tokens del usuario
-    const message = {
-      notification: {
-        title: "Tu orden cambió de estado",
-        body: `Tu orden con id ${orderId} ha cambiado de estado exitosamente con folio #: ${folio}`,
-      },
-    };
+    // Si existen tokens de notificación, enviar la notificación FCM
+    if (Array.isArray(notificationTokens) && notificationTokens.length > 0) {
+      const message = {
+        notification: {
+          title: "Tu orden cambió de estado",
+          body: `Tu orden ha cambiado de estado con folio #: ${folio}`,
+        },
+      };
 
-    const sendNotifications = notificationTokens.map((token) => {
-      const notificationMessage = { ...message, token };
-      return admin.messaging().send(notificationMessage);
-    });
+      const sendNotifications = notificationTokens.map((token) => {
+        const notificationMessage = { ...message, token };
+        return admin.messaging().send(notificationMessage);
+      });
 
-    // Esperar a que se envíen todas las notificaciones
-    await Promise.allSettled(sendNotifications);
+      // Esperar a que se envíen todas las notificaciones
+      await Promise.allSettled(sendNotifications);
+    }
 
     // Respuesta exitosa
     return res.status(200).json({
       message:
-        "Folio agregado exitosamente a la orden y notificaciones enviadas.",
+        "Folio agregado exitosamente a la orden. Si el usuario tenía tokens, se enviaron las notificaciones.",
       order: updatedOrder,
     });
   } catch (error) {
@@ -695,6 +559,84 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
+// export const addFolioToOrder = async (req: Request, res: Response) => {
+//   const { orderId } = req.params;
+//   const { folio } = req.body;
+
+//   // Validar que se envíe el orderId y el folio
+//   if (!orderId) {
+//     return res.status(400).json({ message: "El orderId es obligatorio." });
+//   }
+//   if (!folio) {
+//     return res.status(400).json({ message: "El campo folio es obligatorio." });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const orderRef = db.ref(`orders/${orderId}`);
+
+//     // Verificar si la orden existe
+//     const snapshot = await orderRef.once("value");
+//     if (!snapshot.exists()) {
+//       return res.status(404).json({ message: "La orden no existe." });
+//     }
+
+//     // Obtener el userId de la orden
+//     const order = snapshot.val();
+//     const userId = order.userId;
+
+//     // Verificar si el userId existe
+//     const userRef = db.ref(`users/${userId}`);
+//     const userSnapshot = await userRef.once("value");
+
+//     if (!userSnapshot.exists()) {
+//       return res.status(404).json({ message: "Usuario no encontrado." });
+//     }
+
+//     // Obtener los tokens de notificación del usuario
+//     const user = userSnapshot.val();
+//     const notificationTokens = user.notificationTokens;
+
+//     if (!Array.isArray(notificationTokens) || notificationTokens.length === 0) {
+//       return res.status(400).json({
+//         message: "El usuario no tiene tokens de notificación válidos.",
+//       });
+//     }
+
+//     // Actualizar el campo folio de la orden
+//     await orderRef.update({ folio });
+
+//     // Obtener la orden actualizada
+//     const updatedOrder = (await orderRef.once("value")).val();
+
+//     // Enviar notificación FCM a todos los tokens del usuario
+//     const message = {
+//       notification: {
+//         title: "Tu orden cambió de estado",
+//         body: `Tu orden con id ${orderId} ha cambiado de estado exitosamente con folio #: ${folio}`,
+//       },
+//     };
+
+//     const sendNotifications = notificationTokens.map((token) => {
+//       const notificationMessage = { ...message, token };
+//       return admin.messaging().send(notificationMessage);
+//     });
+
+//     // Esperar a que se envíen todas las notificaciones
+//     await Promise.allSettled(sendNotifications);
+
+//     // Respuesta exitosa
+//     return res.status(200).json({
+//       message:
+//         "Folio agregado exitosamente a la orden y notificaciones enviadas.",
+//       order: updatedOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al adicionar el folio a la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 
 export const saveNotificationToken = async (req: Request, res: Response) => {
   const { userId, token } = req.body;
@@ -778,4 +720,3 @@ export const testMessage = async (req: Request, res: Response) => {
     });
   }
 };
-
