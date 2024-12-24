@@ -114,7 +114,7 @@ const transporter: Transporter = nodemailer.createTransport({
 //     return res.status(500).json({ message: "Error interno del servidor." });
 //   }
 // };
-export const registerUser = async (req: Request, res: Response) => {
+export const resgisterUser = async (req: Request, res: Response) => {
   const { email = null, password, type, customerNumber } = req.body;
 
   // Verifica que al menos uno de los campos (email o customerNumber) esté presente
