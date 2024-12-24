@@ -25,12 +25,106 @@ const transporter: Transporter = nodemailer.createTransport({
 
 //create new user
 
-export const resgisterUser = async (req: Request, res: Response) => {
-  const { email, password, type, customerNumber } = req.body;
-  if (!email || !password || !type) {
+// export const resgisterUser = async (req: Request, res: Response) => {
+//   const { email, password, type, customerNumber } = req.body;
+//   if (!email || !password || !type) {
+//     return res
+//       .status(400)
+//       .json({ message: "Todos los campos son requeridos." });
+//   }
+
+//   const dataEmail: any = {
+//     email,
+//     password,
+//   };
+
+//   if (type === userType.CUSTOMER && customerNumber) {
+//     dataEmail.customerNumber = customerNumber;
+//   }
+
+//   const usermailOptions: SendMailOptions = {
+//     from: EMAIL,
+//     to: email,
+//     subject: "Bienvenido a Fonelli",
+//     html: htmlContentUser(dataEmail),
+//   };
+
+//   try {
+//     const db = admin.database();
+//     const ref = db.ref("users");
+
+//     const snapshot = await ref
+//       .orderByChild("email")
+//       .equalTo(email)
+//       .once("value");
+//     if (snapshot.exists()) {
+//       return res
+//         .status(400)
+//         .json({ message: "El correo electrónico ya está registrado." });
+//     }
+
+//     const newUserRef = ref.push();
+
+//     const dataNewUser: any = {
+//       email,
+//       password,
+//       type,
+//       orders: [],
+//       verify: false,
+//       changePass: 0,
+//       sessionActive: false,
+//       createdAt: admin.database.ServerValue.TIMESTAMP,
+//     };
+//     if (type === userType.CUSTOMER) {
+//       dataNewUser.customerNumber = customerNumber;
+//     }
+//     try {
+//       await newUserRef.set(dataNewUser);
+//       console.log("Usuario creado en Firebase.");
+//     } catch (error) {
+//       console.error("Error al guardar usuario:", error);
+//     }
+
+//     try {
+//       await transporter.sendMail(usermailOptions);
+//       console.log("Correo enviado correctamente.");
+//     } catch (error) {
+//       console.error("Error al enviar correo:", error);
+//     }
+
+//     console.log("Respuesta que se devolverá:", {
+//       message: "Usuario registrado correctamente ok.",
+//       userId: newUserRef.key,
+//       sendEmail: "creado",
+//     });
+
+//     return res.status(201).json({
+//       message: "Usuario registrado correctamente ok.",
+//       userId: newUserRef.key,
+//       sendEmail: "creado",
+//     });
+//   } catch (error: any) {
+//     console.error("Error al registrar usuario:", error);
+
+//     // Manejo de errores comunes
+//     if (error.code === "auth/email-already-exists") {
+//       return res.status(400).json({ message: "El correo ya está registrado." });
+//     }
+
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
+export const registerUser = async (req: Request, res: Response) => {
+  const { email = null, password, type, customerNumber } = req.body;
+
+  // Verifica que al menos uno de los campos (email o customerNumber) esté presente
+  if ((!email && !customerNumber) || !password || !type) {
     return res
       .status(400)
-      .json({ message: "Todos los campos son requeridos." });
+      .json({
+        message:
+          "Se requiere al menos un correo electrónico o número de cliente, junto con contraseña y tipo.",
+      });
   }
 
   const dataEmail: any = {
@@ -44,7 +138,7 @@ export const resgisterUser = async (req: Request, res: Response) => {
 
   const usermailOptions: SendMailOptions = {
     from: EMAIL,
-    to: email,
+    to: email || "", // Evitar enviar un correo nulo
     subject: "Bienvenido a Fonelli",
     html: htmlContentUser(dataEmail),
   };
@@ -53,14 +147,17 @@ export const resgisterUser = async (req: Request, res: Response) => {
     const db = admin.database();
     const ref = db.ref("users");
 
-    const snapshot = await ref
-      .orderByChild("email")
-      .equalTo(email)
-      .once("value");
-    if (snapshot.exists()) {
-      return res
-        .status(400)
-        .json({ message: "El correo electrónico ya está registrado." });
+    // Verifica si el correo electrónico ya está registrado (solo si se proporciona)
+    if (email) {
+      const snapshot = await ref
+        .orderByChild("email")
+        .equalTo(email)
+        .once("value");
+      if (snapshot.exists()) {
+        return res
+          .status(400)
+          .json({ message: "El correo electrónico ya está registrado." });
+      }
     }
 
     const newUserRef = ref.push();
@@ -75,9 +172,11 @@ export const resgisterUser = async (req: Request, res: Response) => {
       sessionActive: false,
       createdAt: admin.database.ServerValue.TIMESTAMP,
     };
+
     if (type === userType.CUSTOMER) {
       dataNewUser.customerNumber = customerNumber;
     }
+
     try {
       await newUserRef.set(dataNewUser);
       console.log("Usuario creado en Firebase.");
@@ -85,23 +184,26 @@ export const resgisterUser = async (req: Request, res: Response) => {
       console.error("Error al guardar usuario:", error);
     }
 
-    try {
-      await transporter.sendMail(usermailOptions);
-      console.log("Correo enviado correctamente.");
-    } catch (error) {
-      console.error("Error al enviar correo:", error);
+    // Enviar correo solo si el email está presente
+    if (email) {
+      try {
+        await transporter.sendMail(usermailOptions);
+        console.log("Correo enviado correctamente.");
+      } catch (error) {
+        console.error("Error al enviar correo:", error);
+      }
     }
 
     console.log("Respuesta que se devolverá:", {
       message: "Usuario registrado correctamente ok.",
       userId: newUserRef.key,
-      sendEmail: "creado",
+      sendEmail: email ? "creado" : "no enviado",
     });
 
     return res.status(201).json({
       message: "Usuario registrado correctamente ok.",
       userId: newUserRef.key,
-      sendEmail: "creado",
+      sendEmail: email ? "creado" : "no enviado",
     });
   } catch (error: any) {
     console.error("Error al registrar usuario:", error);
@@ -114,6 +216,7 @@ export const resgisterUser = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
 
 //change password whit bycrypt
 
@@ -223,13 +326,80 @@ export const getUserById = async (req: Request, res: Response) => {
 
 //Chage data user
 
-export const changeDataUser = async (req: Request, res: Response) => {
-  const { _id, email, password, type, customerNumber } = req.body;
+// export const changeDataUser = async (req: Request, res: Response) => {
+//   const { _id, email, password, type, customerNumber } = req.body;
 
-  if (!_id || (!email && !password && !type)) {
+//   if (!_id || (!email && !password && !type)) {
+//     return res.status(400).json({
+//       message:
+//         "Se requiere al menos uno de los campos a actualizar (Email, Contraseña o Tipo de cuenta).",
+//     });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const userRef = db.ref(`users/${_id}`);
+//     const snapshot = await userRef.once("value");
+
+//     if (!snapshot.exists()) {
+//       return res.status(404).json({ message: "Usuario no encontrado." });
+//     }
+
+//     const updates: Record<string, any> = {};
+//     if (email) updates.email = email;
+//     if (password) {
+//       updates.password = password;
+//       updates.verify = false;
+//     }
+//     if (type) updates.type = type;
+//     if (customerNumber && type === userType.CUSTOMER) {
+//       updates.customerNumber = customerNumber;
+//     }
+
+//     await userRef.update(updates);
+
+//     const userEmail = email || snapshot.val().email;
+
+//     const dataEmail: any = {
+//       email,
+//       password: !password ? "La contraseña no se modificó" : password,
+//     };
+
+//     if (type === userType.CUSTOMER && customerNumber) {
+//       dataEmail.customerNumber = customerNumber;
+//     }
+
+//     const userMailOptions: SendMailOptions = {
+//       from: EMAIL,
+//       to: userEmail,
+//       subject: "Actualización de datos de tu cuenta",
+//       html: htmlContentUpdateUser(dataEmail),
+//     };
+
+//     try {
+//       await transporter.sendMail(userMailOptions);
+//       console.log("Correo enviado correctamente al usuario.");
+//     } catch (error) {
+//       console.error("Error al enviar correo:", error);
+//     }
+
+//     return res.status(200).json({
+//       message: "Datos del usuario actualizados correctamente.",
+//     });
+//   } catch (error) {
+//     console.error("Error al actualizar datos del usuario:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
+
+export const changeDataUser = async (req: Request, res: Response) => {
+  const { _id, email = null, password, type, customerNumber } = req.body;
+
+  // Validar que se proporcione el ID y al menos un campo para actualizar
+  if (!_id || (!email && !password && !type && !customerNumber)) {
     return res.status(400).json({
       message:
-        "Se requiere al menos uno de los campos a actualizar (Email, Contraseña o Tipo de cuenta).",
+        "Se requiere el ID del usuario y al menos uno de los campos a actualizar (Email, Contraseña, Tipo de cuenta o Número de cliente).",
     });
   }
 
@@ -242,24 +412,29 @@ export const changeDataUser = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Usuario no encontrado." });
     }
 
+    const currentData = snapshot.val();
     const updates: Record<string, any> = {};
+
     if (email) updates.email = email;
     if (password) {
       updates.password = password;
-      updates.verify = false;
+      updates.verify = false; // Se requiere verificación nuevamente
     }
     if (type) updates.type = type;
     if (customerNumber && type === userType.CUSTOMER) {
       updates.customerNumber = customerNumber;
     }
 
+    // Actualizar los datos del usuario en la base de datos
     await userRef.update(updates);
 
-    const userEmail = email || snapshot.val().email;
+    // Preparar datos para el correo electrónico
+    const userEmail = email || currentData.email; // Usar el nuevo correo si se actualizó, sino el actual
 
     const dataEmail: any = {
-      email,
-      password: !password ? "La contraseña no se modificó" : password,
+      email: userEmail,
+      password: password || "La contraseña no se modificó.",
+      type: type || currentData.type,
     };
 
     if (type === userType.CUSTOMER && customerNumber) {
@@ -273,11 +448,14 @@ export const changeDataUser = async (req: Request, res: Response) => {
       html: htmlContentUpdateUser(dataEmail),
     };
 
-    try {
-      await transporter.sendMail(userMailOptions);
-      console.log("Correo enviado correctamente al usuario.");
-    } catch (error) {
-      console.error("Error al enviar correo:", error);
+    // Enviar correo solo si el correo electrónico es válido
+    if (userEmail) {
+      try {
+        await transporter.sendMail(userMailOptions);
+        console.log("Correo enviado correctamente al usuario.");
+      } catch (error) {
+        console.error("Error al enviar correo:", error);
+      }
     }
 
     return res.status(200).json({
@@ -288,6 +466,7 @@ export const changeDataUser = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
+
 
 //Delete user
 
