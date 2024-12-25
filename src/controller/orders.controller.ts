@@ -528,7 +528,7 @@ export const addFolioToOrder = async (req: Request, res: Response) => {
     const notificationToken = user.notificationToken; // Cambiar a token único
 
     // Actualizar el campo folio de la orden
-    await orderRef.update({ folio });
+    await orderRef.update({ folio, status: stateType.CAUGHT });
 
     // Obtener la orden actualizada
     const updatedOrder = (await orderRef.once("value")).val();
