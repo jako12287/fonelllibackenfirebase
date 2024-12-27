@@ -742,21 +742,23 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         customerNumber?: string;
       };
 
-      // if (!email && !customerNumber && !password && !type) {
-      //   errors.push({ row, message: "Fila vacía o incompleta." });
-      //   continue;
-      // }
+      // Verificación de campos vacíos
+      if (!password || !type) {
+        errors.push({ row, message: "Faltan campos obligatorios (contraseña o tipo)." });
+        continue;
+      }
 
+      // Verificación de cliente (CUSTOMER)
       if (type === userType.CUSTOMER) {
-        if (!customerNumber || !password) {
+        if (!customerNumber) {
           errors.push({
             row,
-            message:
-              "El número de cliente y la contraseña son obligatorios para usuarios de tipo Cliente.",
+            message: "El número de cliente es obligatorio para usuarios de tipo Cliente.",
           });
           continue;
         }
 
+        // Comprobar si el número de cliente ya está registrado
         const customerSnapshot = await ref
           .orderByChild("customerNumber")
           .equalTo(customerNumber)
@@ -769,16 +771,18 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
           });
           continue;
         }
-      } else if (type === userType.COLLABORATOR) {
-        if (!email || !password) {
+      } 
+      // Verificación de colaborador (COLLABORATOR)
+      else if (type === userType.COLLABORATOR) {
+        if (!email) {
           errors.push({
             row,
-            message:
-              "El correo electrónico y la contraseña son obligatorios para usuarios de tipo COLLABORATOR.",
+            message: "El correo electrónico es obligatorio para usuarios de tipo COLLABORATOR.",
           });
           continue;
         }
 
+        // Comprobar si el correo electrónico ya está registrado
         const snapshot = await ref
           .orderByChild("email")
           .equalTo(email)
@@ -788,7 +792,9 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
           errors.push({ email, message: "Correo ya registrado." });
           continue;
         }
-      } else {
+      } 
+      // Validación de tipo de usuario
+      else {
         errors.push({
           row,
           message: `El tipo de usuario ${type} no es válido.`,
@@ -796,9 +802,10 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         continue;
       }
 
+      // Creación del nuevo usuario
       const newUserRef = ref.push();
       const newUserData: any = {
-        email: email || null,
+        email: email || null,  // Si es cliente, email puede ser null
         password,
         type,
         orders: [],
@@ -811,8 +818,10 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         newUserData.customerNumber = customerNumber;
       }
 
+      // Guardar el nuevo usuario en la base de datos
       await newUserRef.set(newUserData);
 
+      // Enviar correo si es necesario
       if (email) {
         const userMailOptions: SendMailOptions = {
           from: EMAIL,
@@ -833,9 +842,11 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         }
       }
 
+      // Agregar el usuario a la lista de éxitos
       success.push({ email, customerNumber });
     }
 
+    // Respuesta al cliente
     return res.status(201).json({
       message: "Proceso completado.",
       successCount: success.length,
