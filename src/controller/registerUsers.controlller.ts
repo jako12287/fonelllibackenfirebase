@@ -119,12 +119,10 @@ export const resgisterUser = async (req: Request, res: Response) => {
 
   // Verifica que al menos uno de los campos (email o customerNumber) esté presente
   if ((!email && !customerNumber) || !password || !type) {
-    return res
-      .status(400)
-      .json({
-        message:
-          "Se requiere al menos un correo electrónico o número de cliente, junto con contraseña y tipo.",
-      });
+    return res.status(400).json({
+      message:
+        "Se requiere al menos un correo electrónico o número de cliente, junto con contraseña y tipo.",
+    });
   }
 
   const dataEmail: any = {
@@ -216,7 +214,6 @@ export const resgisterUser = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
 
 //change password whit bycrypt
 
@@ -466,7 +463,6 @@ export const changeDataUser = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
-
 
 //Delete user
 
@@ -746,17 +742,17 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         customerNumber?: string;
       };
 
-      if (!email && !customerNumber && !password && !type) {
-        errors.push({ row, message: "Fila vacía o incompleta." });
-        continue;
-      }
+      // if (!email && !customerNumber && !password && !type) {
+      //   errors.push({ row, message: "Fila vacía o incompleta." });
+      //   continue;
+      // }
 
       if (type === userType.CUSTOMER) {
         if (!customerNumber || !password) {
           errors.push({
             row,
             message:
-              "El número de cliente y la contraseña son obligatorios para usuarios de tipo CUSTOMER.",
+              "El número de cliente y la contraseña son obligatorios para usuarios de tipo Cliente.",
           });
           continue;
         }
@@ -793,7 +789,10 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
           continue;
         }
       } else {
-        errors.push({ row, message: `El tipo de usuario ${type} no es válido.` });
+        errors.push({
+          row,
+          message: `El tipo de usuario ${type} no es válido.`,
+        });
         continue;
       }
 
@@ -804,6 +803,7 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         type,
         orders: [],
         verify: false,
+        sessionActive: false,
         createdAt: admin.database.ServerValue.TIMESTAMP,
       };
 
