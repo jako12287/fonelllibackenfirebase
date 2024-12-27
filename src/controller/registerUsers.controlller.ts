@@ -497,12 +497,108 @@ export const deleteUser = async (req: Request, res: Response) => {
 
 //register masseve
 
+// export const registerMassiveUsers = async (req: Request, res: Response) => {
+//   const file = req.file;
+//   try {
+//     if (!file) {
+//       return res.status(400).json({ message: "Se requiere un archivo Excel." });
+//     }
+//     const workbook = XLSX.read(file.buffer, { type: "buffer" });
+//     const sheetName = workbook.SheetNames[0];
+//     const sheet = workbook.Sheets[sheetName];
+//     const data = XLSX.utils.sheet_to_json(sheet);
+
+//     if (!Array.isArray(data) || data.length === 0) {
+//       return res.status(400).json({ message: "El archivo Excel está vacío." });
+//     }
+//     const db = admin.database();
+//     const ref = db.ref("users");
+
+//     const errors: any[] = [];
+//     const success: any[] = [];
+
+//     for (const row of data) {
+//       const { email, password, type } = row as {
+//         email: string;
+//         password: string;
+//         type: string;
+//       };
+
+//       if (!email || !password || !type) {
+//         errors.push({ row, message: "Campos faltantes." });
+//         continue;
+//       }
+
+//       if (!allowedUserTypes.includes(type as userType)) {
+//         errors.push({
+//           email,
+//           message: `El tipo de usuario ${type} no es válido.`,
+//         });
+//         continue;
+//       }
+
+//       const snapshot = await ref
+//         .orderByChild("email")
+//         .equalTo(email)
+//         .once("value");
+
+//       if (snapshot.exists()) {
+//         errors.push({ email, message: "Correo ya registrado." });
+//         continue;
+//       }
+
+//       const newUserRef = ref.push();
+//       await newUserRef.set({
+//         email,
+//         password,
+//         type,
+//         orders: [],
+//         verify: false,
+//         createdAt: admin.database.ServerValue.TIMESTAMP,
+//       });
+
+//       const userMailOptions: SendMailOptions = {
+//         from: EMAIL,
+//         to: email,
+//         subject: "Bienvenido a Fonelli",
+//         html: htmlContentUser({ email, password }),
+//       };
+
+//       try {
+//         await transporter.sendMail(userMailOptions);
+//         console.log(`Correo enviado correctamente a ${email}`);
+//       } catch (error) {
+//         console.error(`Error al enviar correo a ${email}:`, error);
+//         errors.push({
+//           email,
+//           message: "Usuario creado, pero falló el envío del correo.",
+//         });
+//         continue;
+//       }
+
+//       success.push({ email });
+//     }
+
+//     return res.status(201).json({
+//       message: "Proceso completado.",
+//       successCount: success.length,
+//       errorsCount: errors.length,
+//       success,
+//       errors,
+//     });
+//   } catch (error) {
+//     console.error("Error en el registro masivo:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
+
 export const registerMassiveUsers = async (req: Request, res: Response) => {
   const file = req.file;
   try {
     if (!file) {
       return res.status(400).json({ message: "Se requiere un archivo Excel." });
     }
+
     const workbook = XLSX.read(file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -511,6 +607,7 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
     if (!Array.isArray(data) || data.length === 0) {
       return res.status(400).json({ message: "El archivo Excel está vacío." });
     }
+
     const db = admin.database();
     const ref = db.ref("users");
 
@@ -518,65 +615,92 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
     const success: any[] = [];
 
     for (const row of data) {
-      const { email, password, type } = row as {
-        email: string;
+      const { email, password, type, customerNumber } = row as {
+        email?: string; // Email puede ser opcional para `customer`
         password: string;
         type: string;
+        customerNumber?: string; // Se requiere para `customer`
       };
 
-      if (!email || !password || !type) {
-        errors.push({ row, message: "Campos faltantes." });
-        continue;
-      }
-
-      if (!allowedUserTypes.includes(type as userType)) {
+      // Validación inicial según el tipo de usuario
+      if (type === userType.CUSTOMER) {
+        if (!customerNumber || !password) {
+          errors.push({
+            row,
+            message:
+              "El número de cliente y la contraseña son obligatorios para usuarios de tipo CUSTOMER.",
+          });
+          continue;
+        }
+      } else if (type === userType.COLLABORATOR) {
+        if (!email || !password) {
+          errors.push({
+            row,
+            message:
+              "El correo electrónico y la contraseña son obligatorios para usuarios de tipo COLLABORATOR.",
+          });
+          continue;
+        }
+      } else {
         errors.push({
-          email,
+          row,
           message: `El tipo de usuario ${type} no es válido.`,
         });
         continue;
       }
 
-      const snapshot = await ref
-        .orderByChild("email")
-        .equalTo(email)
-        .once("value");
+      // Verifica si el correo electrónico ya está registrado (si se proporciona)
+      if (email) {
+        const snapshot = await ref
+          .orderByChild("email")
+          .equalTo(email)
+          .once("value");
 
-      if (snapshot.exists()) {
-        errors.push({ email, message: "Correo ya registrado." });
-        continue;
+        if (snapshot.exists()) {
+          errors.push({ email, message: "Correo ya registrado." });
+          continue;
+        }
       }
 
       const newUserRef = ref.push();
-      await newUserRef.set({
-        email,
+      const newUserData: any = {
+        email: email || null, // El email puede ser nulo para `customer`
         password,
         type,
         orders: [],
         verify: false,
         createdAt: admin.database.ServerValue.TIMESTAMP,
-      });
-
-      const userMailOptions: SendMailOptions = {
-        from: EMAIL,
-        to: email,
-        subject: "Bienvenido a Fonelli",
-        html: htmlContentUser({ email, password }),
       };
 
-      try {
-        await transporter.sendMail(userMailOptions);
-        console.log(`Correo enviado correctamente a ${email}`);
-      } catch (error) {
-        console.error(`Error al enviar correo a ${email}:`, error);
-        errors.push({
-          email,
-          message: "Usuario creado, pero falló el envío del correo.",
-        });
-        continue;
+      if (type === userType.CUSTOMER) {
+        newUserData.customerNumber = customerNumber; // Agrega el número de cliente
       }
 
-      success.push({ email });
+      await newUserRef.set(newUserData);
+
+      // Intentar enviar el correo solo si el email está presente
+      if (email) {
+        const userMailOptions: SendMailOptions = {
+          from: EMAIL,
+          to: email,
+          subject: "Bienvenido a Fonelli",
+          html: htmlContentUser({ email, password }),
+        };
+
+        try {
+          await transporter.sendMail(userMailOptions);
+          console.log(`Correo enviado correctamente a ${email}`);
+        } catch (error) {
+          console.error(`Error al enviar correo a ${email}:`, error);
+          errors.push({
+            email,
+            message: "Usuario creado, pero falló el envío del correo.",
+          });
+          continue;
+        }
+      }
+
+      success.push({ email, customerNumber });
     }
 
     return res.status(201).json({
