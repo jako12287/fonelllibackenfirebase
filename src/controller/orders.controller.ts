@@ -317,6 +317,61 @@ export const updateOrder = async (req: Request, res: Response) => {
     // Obtener los datos actualizados para devolver en la respuesta
     const updatedOrder = (await orderRef.once("value")).val();
 
+    // Enviar notificaciones push a los administradores y colaboradores
+    const usersRef = db.ref("users");
+    const usersSnapshot = await usersRef.once("value");
+
+    if (usersSnapshot.exists()) {
+      const tokens: string[] = [];
+      usersSnapshot.forEach((childSnapshot) => {
+        const userData = childSnapshot.val();
+        if (
+          (userData.type === "ADMIN" || userData.type === "COLLABORATOR") &&
+          userData.notificationToken
+        ) {
+          tokens.push(userData.notificationToken);
+        }
+      });
+
+      if (tokens.length > 0) {
+        for (const token of tokens) {
+          const message: any = {
+            token,
+            notification: {
+              title: "Orden Actualizada",
+              body: `La orden ${orderId} ha sido actualizada.`,
+            },
+            webpush: {
+              fcm_options: {
+                link: "https://www.fonellipedidos.com",
+              },
+              notification: {
+                icon: "https://www.fonellipedidos.com/icon.png",
+                requireInteraction: true,
+              },
+            },
+          };
+
+          try {
+            const response = await admin.messaging().send(message);
+            console.log(
+              `Notificación enviada exitosamente al token ${token}:`,
+              response
+            );
+          } catch (error) {
+            console.error(
+              `Error al enviar notificación al token ${token}:`,
+              error
+            );
+          }
+        }
+      } else {
+        console.log(
+          "No se encontraron tokens de notificación para los usuarios."
+        );
+      }
+    }
+
     // Respuesta exitosa
     return res.status(200).json({
       message: "Orden actualizada exitosamente.",
@@ -328,6 +383,67 @@ export const updateOrder = async (req: Request, res: Response) => {
   }
 };
 
+// export const updateOrder = async (req: Request, res: Response) => {
+//   const { orderId } = req.params;
+//   const updatedData = req.body;
+
+//   // Validar que se envíe el orderId
+//   if (!orderId) {
+//     return res.status(400).json({ message: "El orderId es obligatorio." });
+//   }
+
+//   // Validar que se envíen datos para actualizar
+//   if (!updatedData || Object.keys(updatedData).length === 0) {
+//     return res
+//       .status(400)
+//       .json({ message: "No se enviaron datos para actualizar." });
+//   }
+
+//   try {
+//     const db = admin.database();
+//     const orderRef = db.ref(`orders/${orderId}`);
+
+//     // Verificar si la orden existe
+//     const snapshot = await orderRef.once("value");
+
+//     if (!snapshot.exists()) {
+//       return res.status(404).json({ message: "La orden no existe." });
+//     }
+
+//     // Obtener los datos actuales de la orden
+//     const currentData = snapshot.val();
+
+//     // Lista de campos mutuamente excluyentes
+//     const exclusiveFields = ["size", "long", "initialName", "name"];
+
+//     // Detectar el campo presente en updatedData
+//     const presentField = exclusiveFields.find((field) => field in updatedData);
+
+//     // Si se envió un campo exclusivo, eliminar los demás
+//     if (presentField) {
+//       exclusiveFields.forEach((field) => {
+//         if (field !== presentField && field in currentData) {
+//           updatedData[field] = null; // Esto elimina el campo en Firebase
+//         }
+//       });
+//     }
+
+//     // Actualizar la orden con los datos proporcionados
+//     await orderRef.update(updatedData);
+
+//     // Obtener los datos actualizados para devolver en la respuesta
+//     const updatedOrder = (await orderRef.once("value")).val();
+
+//     // Respuesta exitosa
+//     return res.status(200).json({
+//       message: "Orden actualizada exitosamente.",
+//       order: updatedOrder,
+//     });
+//   } catch (error) {
+//     console.error("Error al actualizar la orden:", error);
+//     return res.status(500).json({ message: "Error interno del servidor." });
+//   }
+// };
 // export const updateOrder = async (req: Request, res: Response) => {
 //   const { orderId } = req.params;
 //   const updatedData = req.body;
