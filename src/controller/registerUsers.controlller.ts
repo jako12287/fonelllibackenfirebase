@@ -744,7 +744,10 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
 
       // Verificación de campos vacíos
       if (!password || !type) {
-        errors.push({ row, message: "Faltan campos obligatorios (contraseña o tipo)." });
+        errors.push({
+          row,
+          message: "Faltan campos obligatorios (contraseña o tipo).",
+        });
         continue;
       }
 
@@ -753,7 +756,8 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
         if (!customerNumber) {
           errors.push({
             row,
-            message: "El número de cliente es obligatorio para usuarios de tipo Cliente.",
+            message:
+              "El número de cliente es obligatorio para usuarios de tipo Cliente.",
           });
           continue;
         }
@@ -771,13 +775,14 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
           });
           continue;
         }
-      } 
+      }
       // Verificación de colaborador (COLLABORATOR)
       else if (type === userType.COLLABORATOR) {
         if (!email) {
           errors.push({
             row,
-            message: "El correo electrónico es obligatorio para usuarios de tipo COLLABORATOR.",
+            message:
+              "El correo electrónico es obligatorio para usuarios de tipo COLLABORATOR.",
           });
           continue;
         }
@@ -792,7 +797,7 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
           errors.push({ email, message: "Correo ya registrado." });
           continue;
         }
-      } 
+      }
       // Validación de tipo de usuario
       else {
         errors.push({
@@ -805,7 +810,7 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
       // Creación del nuevo usuario
       const newUserRef = ref.push();
       const newUserData: any = {
-        email: email || null,  // Si es cliente, email puede ser null
+        email: email || null, // Si es cliente, email puede ser null
         password,
         type,
         orders: [],
@@ -856,6 +861,39 @@ export const registerMassiveUsers = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error en el registro masivo:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+export const verifyPassword = async (req: Request, res: Response) => {
+  const { id, password } = req.body;
+
+  // Verificación de campos obligatorios
+  if (!id || !password) {
+    return res.status(400).json({ message: "Faltan campos obligatorios." });
+  }
+
+  try {
+    const db = admin.database();
+    const userRef = db.ref(`users/${id}`);
+    const snapshot = await userRef.once("value");
+    const userData = snapshot.val();
+
+    // Verificar si el usuario existe
+    if (!userData) {
+      return res.status(404).json({ message: "Usuario no encontrado." });
+    }
+
+    // Comparar contraseñas
+    const isPasswordValid = await bcrypt.compare(password, userData.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Contraseña incorrecta." });
+    }
+
+    // Contraseña correcta
+    return res.status(200).json({ message: "Autenticación exitosa." });
+  } catch (error) {
+    console.error("Error al verificar la contraseña:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
