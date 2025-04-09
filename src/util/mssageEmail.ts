@@ -30,6 +30,14 @@ export const htmlContentUser = ({
       <p style="margin-bottom: 16px;">Al iniciar sesión en la aplicación, se te pedirá que cambies tu contraseña por una de tu preferencia para mayor seguridad.</p>
       <p style="margin-bottom: 16px;">Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos. Estamos aquí para apoyarte.</p>
       <p style="text-align: center; font-weight: bold;">Gracias por confiar en <strong>Fonelli</strong>.</p>
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="https://play.google.com/store/apps/details?id=com.fonelli.joyas&hl=es" target="_blank" style="margin-right: 10px;">
+          <img src="https://www.fonellipedidos.com/download_google.png" alt="Descargar en Google Play" style="width: 200px; height: auto;" />
+        </a>
+        <a href="https://apps.apple.com/co/app/fonelli/id6742579101" target="_blank">
+          <img src="https://www.fonellipedidos.com/download_apple.png" alt="Descargar en App Store" style="width: 200px; height: auto;" />
+        </a>
+      </div>
     </div>
   `;
 };
@@ -40,17 +48,26 @@ export const htmlContentUpdateUser = ({
   customerNumber = null,
 }: HtmlUpdatemail) => {
   const textComplement = `<li><strong>Número de cliente:</strong> ${customerNumber}</li>`;
-  return `<div style="font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto;">
-<h1 style="color: #5CA4DA; text-align: center;">Fonelli</h1>
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto;">
+      <h1 style="color: #5CA4DA; text-align: center;">Fonelli</h1>
       <h2 style="color: #000; text-align: center;">Se han realizado cambios en los datos de tu cuenta por nuestra parte</h2>
       <ul>
-          ${email ? `<li>Email: ${email}</li>` : ""}
-          ${password ? `<li>Contraseña: ${password}</li>` : ""}
-          ${customerNumber ? textComplement : ""}
-        </ul>
-        <p>Por favor, inicia sesión y actualiza tu contraseña si es necesario.</p>
-        <p>Gracias,</p>
-        <p>El equipo de Fonelli</p>
-</div>
-`;
+        ${email ? `<li>Email: ${email}</li>` : ""}
+        ${password ? `<li>Contraseña: ${password}</li>` : ""}
+        ${customerNumber ? textComplement : ""}
+      </ul>
+      <p>Por favor, inicia sesión y actualiza tu contraseña si es necesario.</p>
+      <p>Gracias,</p>
+      <p>El equipo de Fonelli</p>
+       <div style="text-align: center; margin-top: 20px;">
+        <a href="https://play.google.com/store/apps/details?id=com.fonelli.joyas&hl=es" target="_blank" style="margin-right: 10px;">
+          <img src="https://www.fonellipedidos.com/download_google.png" alt="Descargar en Google Play" style="width: 200px; height: auto;" />
+        </a>
+        <a href="https://apps.apple.com/co/app/fonelli/id6742579101" target="_blank">
+          <img src="https://www.fonellipedidos.com/download_apple.png" alt="Descargar en App Store" style="width: 200px; height: auto;" />
+        </a>
+      </div>
+    </div>
+  `;
 };
