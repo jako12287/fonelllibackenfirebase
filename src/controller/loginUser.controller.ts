@@ -60,11 +60,11 @@ export const login = async (req: Request, res: Response) => {
     // Verificar si el usuario es ADMIN o COLLABORATOR
     if (userData.type === "ADMIN" || userData.type === "COLLABORATOR") {
       // Verificar si ya hay una sesión activa para este usuario
-      if (userData.sessionActive === true) {
-        return res
-          .status(403)
-          .json({ message: "Ya tienes una sesión activa." });
-      }
+      // if (userData.sessionActive === true) {
+      //   return res
+      //     .status(403)
+      //     .json({ message: "Ya tienes una sesión activa." });
+      // }
 
       // Si no hay sesión activa, establecer sessionActive a true
       await ref.child(userId).update({ sessionActive: true });
