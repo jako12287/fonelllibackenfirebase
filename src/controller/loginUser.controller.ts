@@ -59,6 +59,7 @@ export const login = async (req: Request, res: Response) => {
 
     // Verificar si el usuario es ADMIN o COLLABORATOR
     if (userData.type === "ADMIN" || userData.type === "COLLABORATOR") {
+      await ref.child(userId).update({ sessionActive: true });
       // Verificar si ya hay una sesión activa para este usuario
       // if (userData.sessionActive === true) {
       //   return res
@@ -67,7 +68,6 @@ export const login = async (req: Request, res: Response) => {
       // }
 
       // Si no hay sesión activa, establecer sessionActive a true
-      await ref.child(userId).update({ sessionActive: true });
     }
 
     // Generar el token si la contraseña es válida
@@ -87,6 +87,7 @@ export const login = async (req: Request, res: Response) => {
         verify: userData.verify,
         changePass: userData.changePass,
         customerNumber: userData.customerNumber,
+        sessionActive: userData?.sessionActive || null
       },
     });
   } catch (error) {
