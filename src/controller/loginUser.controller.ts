@@ -60,14 +60,6 @@ export const login = async (req: Request, res: Response) => {
     // Verificar si el usuario es ADMIN o COLLABORATOR
     if (userData.type === "ADMIN" || userData.type === "COLLABORATOR") {
       await ref.child(userId).update({ sessionActive: true });
-      // Verificar si ya hay una sesión activa para este usuario
-      // if (userData.sessionActive === true) {
-      //   return res
-      //     .status(403)
-      //     .json({ message: "Ya tienes una sesión activa." });
-      // }
-
-      // Si no hay sesión activa, establecer sessionActive a true
     }
 
     // Generar el token si la contraseña es válida
@@ -76,6 +68,11 @@ export const login = async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: "24h" }
     );
+
+    // Guardar el token en la base de datos para invalidar anteriores
+    await ref
+      .child(userId)
+      .update({ sessionActive: true, sessionToken: token });
 
     return res.status(200).json({
       message: "Login exitoso.",
@@ -87,7 +84,7 @@ export const login = async (req: Request, res: Response) => {
         verify: userData.verify,
         changePass: userData.changePass,
         customerNumber: userData.customerNumber,
-        sessionActive: userData?.sessionActive || null
+        sessionActive: userData?.sessionActive || null,
       },
     });
   } catch (error) {
@@ -96,8 +93,9 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const logout = (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response) => {
   const { userId } = req.body;
+
   if (!userId) {
     return res.status(400).json({ message: "Faltan campos requeridos." });
   }
@@ -106,9 +104,12 @@ export const logout = (req: Request, res: Response) => {
     const db = admin.database();
     const ref = db.ref("users");
 
-    ref.child(userId).update({ sessionActive: false });
+    await ref.child(userId).update({
+      sessionActive: false,
+      sessionToken: null,
+    });
 
-    return res.status(200).json({ message: "Sesión cerrada." });
+    return res.status(200).json({ message: "Sesión cerrada correctamente." });
   } catch (error) {
     console.error("Error en el logout:", error);
     return res.status(500).json({ message: "Error interno del servidor." });
